@@ -1,0 +1,15 @@
+services:
+  - type: web
+    name: discord-bot-python
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main.py
+    autoDeploy: true
+    healthCheckPath: /
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.3
+      - key: PREFIX
+        value: ","
+      - key: PORT
+        value: "3000"
