@@ -40,7 +40,7 @@ async def on_ready():
         status=discord.Status.online,
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="Online | 24/7 by Render & UptimeRobot"
+            name="Criado por Salvador | Ligado 24/7"
         )
     )
     rate_limit_handler.reset()
