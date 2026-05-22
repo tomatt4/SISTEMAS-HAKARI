@@ -1,5 +1,4 @@
 import discord
-import random
 import time
 from discord.ext import commands
 
@@ -17,7 +16,7 @@ class Tomato(commands.Cog):
             last_used = cooldowns.get(ctx.author.id)
 
             if last_used:
-                remaining = 300 - (time.time() - last_used)
+                remaining = 1200 - (time.time() - last_used)
 
                 if remaining > 0:
                     await ctx.send(
@@ -27,17 +26,13 @@ class Tomato(commands.Cog):
 
             cooldowns[ctx.author.id] = time.time()
 
-        messages = [msg async for msg in ctx.channel.history(limit=5)]
-
-        emojis = ["🍅"]
+        messages = [msg async for msg in ctx.channel.history(limit=6)]
+        messages = [msg for msg in messages if msg.id != ctx.message.id][:5]
 
         for msg in messages:
-
             try:
-                await msg.reply(
-                    f""
-                )
-            except:
+                await msg.add_reaction("🍅")
+            except Exception:
                 pass
 
         await ctx.send("🍅 O tomate foi lançado.")
