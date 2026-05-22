@@ -114,6 +114,36 @@ class Utilities(commands.Cog):
         
         await ctx.send(embed=embed)
 
+    @commands.command()
+    async def help(self, ctx):
+        """Exibe informações do bot e comandos disponíveis"""
+        embed = discord.Embed(
+            title="📚 Ajuda do Bot",
+            color=discord.Color.blurple()
+        )
+
+        # Informações do bot
+        embed.add_field(
+            name="🤖 Informações",
+            value=f"**Nome:** {self.bot.user.name}\n**Prefixo:** `{self.bot.command_prefix}`",
+            inline=False
+        )
+
+        # Comandos disponíveis
+        commands_list = []
+        for cog in self.bot.cogs.values():
+            for command in cog.get_commands():
+                commands_list.append(f"`{self.bot.command_prefix}{command.name}` - {command.help or 'Sem descrição'}")
+
+        if commands_list:
+            embed.add_field(
+                name="📋 Comandos Disponíveis",
+                value="\n".join(commands_list),
+                inline=False
+            )
+
+        await ctx.send(embed=embed)
+
 
 async def setup(bot):
     await bot.add_cog(ServerInfo(bot))
