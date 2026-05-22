@@ -5,7 +5,7 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "online na porta 3000 seu bosta"
+    return "recado importante: o kae é gay e sempre foi (online na porta 3000)"
 
 def run():
     app.run(host='0.0.0.0', port=3000)
