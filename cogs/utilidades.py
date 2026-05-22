@@ -115,7 +115,7 @@ class Utilities(commands.Cog):
         await ctx.send(embed=embed)
 
     @commands.command()
-    async def help(self, ctx):
+    async def ajuda(self, ctx):
         """Exibe informações do bot e comandos disponíveis"""
         embed = discord.Embed(
             title="📚 Ajuda do Bot",
