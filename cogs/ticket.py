@@ -1,6 +1,7 @@
 import discord
 from discord.ext import commands
 from discord import app_commands
+from components import TicketEmbed, TicketOpenedEmbed, ConfirmCloseTicketEmbed, TicketClosedEmbed, ErrorEmbed
 
 TICKET_IMAGE = ""  # coloque a imagem depois
 SUPPORT_ROLE_ID = 1504998108407398501  # ID do cargo de suporte
@@ -47,11 +48,7 @@ class TicketView(discord.ui.View):
             overwrites=overwrites
         )
 
-        embed = discord.Embed(
-            title="🎫 Ticket Aberto",
-            description="Explique seu problema e aguarde a equipe.",
-            color=discord.Color.green()
-        )
+        embed = TicketOpenedEmbed(interaction.user).build()
         
         # Mencionar o cargo de suporte
         mention_text = interaction.user.mention
@@ -80,11 +77,7 @@ class CloseTicketView(discord.ui.View):
 
     @discord.ui.button(label="Cancelar", style=discord.ButtonStyle.gray, emoji="❌")
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
-        embed = discord.Embed(
-            title="❌ Ticket Não Fechado",
-            description="O ticket não será fechado.",
-            color=discord.Color.red()
-        )
+        embed = TicketClosedEmbed().build()
         await interaction.response.send_message(embed=embed, ephemeral=True)
         self.stop()
 
@@ -97,30 +90,14 @@ class Tickets(commands.Cog):
     @commands.has_permissions(administrator=True)
     async def painel_prefix(self, ctx):
         """Envia o painel de tickets (prefixo)"""
-        embed = discord.Embed(
-            title="🎫 Sistema de Tickets",
-            description="Clique no botão abaixo para abrir um ticket.",
-            color=discord.Color.blurple()
-        )
-
-        if TICKET_IMAGE:
-            embed.set_image(url=TICKET_IMAGE)
-
+        embed = TicketEmbed(TICKET_IMAGE).build()
         await ctx.send(embed=embed, view=TicketView())
 
     @app_commands.command(name="painel", description="Envia o painel de tickets")
     @app_commands.checks.has_permissions(administrator=True)
     async def painel_slash(self, interaction: discord.Interaction):
         """Envia o painel de tickets (slash)"""
-        embed = discord.Embed(
-            title="🎫 Sistema de Tickets",
-            description="Clique no botão abaixo para abrir um ticket.",
-            color=discord.Color.blurple()
-        )
-
-        if TICKET_IMAGE:
-            embed.set_image(url=TICKET_IMAGE)
-
+        embed = TicketEmbed(TICKET_IMAGE).build()
         await interaction.response.send_message(embed=embed, view=TicketView())
 
     # ===== FECHAR COMMAND =====
@@ -129,11 +106,7 @@ class Tickets(commands.Cog):
         """Comando para fechar um ticket (prefixo)"""
         # Verificar se é um canal de ticket
         if not ctx.channel.name.startswith("ticket-"):
-            embed = discord.Embed(
-                title="❌ Erro",
-                description="Este comando só pode ser usado em canais de ticket!",
-                color=discord.Color.red()
-            )
+            embed = ErrorEmbed("❌ Erro", "Este comando só pode ser usado em canais de ticket!").build()
             await ctx.send(embed=embed)
             return
 
@@ -142,21 +115,12 @@ class Tickets(commands.Cog):
         
         # Verificar se o usuário tem o cargo de suporte
         if support_role not in ctx.author.roles:
-            embed = discord.Embed(
-                title="❌ Permissão Negada",
-                description="Só administradores podem usar o comando",
-                color=discord.Color.red()
-            )
+            embed = ErrorEmbed("❌ Permissão Negada", "Só administradores podem usar o comando").build()
             await ctx.send(embed=embed)
             return
 
         # Criar embed de confirmação
-        embed = discord.Embed(
-            title="⚠️ Confirmação de Fechamento",
-            description="Tem certeza que deseja fechar este ticket?",
-            color=discord.Color.yellow()
-        )
-
+        embed = ConfirmCloseTicketEmbed().build()
         await ctx.send(embed=embed, view=CloseTicketView(ctx.channel))
 
     @app_commands.command(name="fechar", description="Fecha um ticket")
@@ -164,11 +128,7 @@ class Tickets(commands.Cog):
         """Comando para fechar um ticket (slash)"""
         # Verificar se é um canal de ticket
         if not interaction.channel.name.startswith("ticket-"):
-            embed = discord.Embed(
-                title="❌ Erro",
-                description="Este comando só pode ser usado em canais de ticket!",
-                color=discord.Color.red()
-            )
+            embed = ErrorEmbed("❌ Erro", "Este comando só pode ser usado em canais de ticket!").build()
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
@@ -177,21 +137,12 @@ class Tickets(commands.Cog):
         
         # Verificar se o usuário tem o cargo de suporte
         if support_role not in interaction.user.roles:
-            embed = discord.Embed(
-                title="❌ Permissão Negada",
-                description="Só administradores podem usar o comando",
-                color=discord.Color.red()
-            )
+            embed = ErrorEmbed("❌ Permissão Negada", "Só administradores podem usar o comando").build()
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
         # Criar embed de confirmação
-        embed = discord.Embed(
-            title="⚠️ Confirmação de Fechamento",
-            description="Tem certeza que deseja fechar este ticket?",
-            color=discord.Color.yellow()
-        )
-
+        embed = ConfirmCloseTicketEmbed().build()
         await interaction.response.send_message(embed=embed, view=CloseTicketView(interaction.channel))
 
 async def setup(bot):

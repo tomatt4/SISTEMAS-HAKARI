@@ -3,6 +3,7 @@ import time
 import random
 from discord.ext import commands
 from discord import app_commands
+from components import ConfessionEmbed, ConfessionLogEmbed
 
 LOGS_CHANNEL_ID = 1490679538559221770
 CONFISSOES_CHANNEL_ID = 1507592685282787421
@@ -34,28 +35,9 @@ class ConfissaoModal(discord.ui.Modal, title="Confissão Anônima"):
         # Obter o texto da confissão
         confissao_text = self.confissao.value
         
-        # Embed para o canal de confissões (anônimo)
-        confissao_embed = discord.Embed(
-            title="🔐 Confissão Anônima",
-            description=confissao_text,
-            color=discord.Color.purple()
-        )
-        confissao_embed.set_footer(text="Confissão anônima")
-        confissao_embed.timestamp = discord.utils.utcnow()
-        
-        # Embed para o canal de logs (com quem enviou)
-        log_embed = discord.Embed(
-            title="📋 Log de Confissão",
-            description=confissao_text,
-            color=discord.Color.greyple()
-        )
-        log_embed.add_field(
-            name="👤 Enviado por",
-            value=f"{interaction.user.mention} ({interaction.user.id})",
-            inline=False
-        )
-        log_embed.set_footer(text=f"Guild: {interaction.guild.name}")
-        log_embed.timestamp = discord.utils.utcnow()
+        # Usar embeds personalizadas
+        confissao_embed = ConfessionEmbed(confissao_text).build()
+        log_embed = ConfessionLogEmbed(confissao_text, interaction.user, interaction.guild).build()
 
         try:
             # Enviar confissão anônima para o canal de confissões

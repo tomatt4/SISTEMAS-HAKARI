@@ -4,6 +4,7 @@ from typing import Optional
 import discord
 from discord.ext import commands
 from discord import app_commands
+from components import WarnEmbed, ErrorEmbed
 
 class Admin(commands.Cog):
     def __init__(self, bot):
@@ -40,13 +41,7 @@ class Admin(commands.Cog):
         if not allowed:
             return await ctx.send(message)
 
-        embed = discord.Embed(
-            title="⚠️ Aviso",
-            description=f"{member.mention} foi avisado.",
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Motivo", value=reason, inline=False)
-        embed.set_footer(text=f"Aviso por {ctx.author}", icon_url=ctx.author.display_avatar.url)
+        embed = WarnEmbed(member, reason, ctx.author).build()
         await ctx.send(embed=embed)
 
         try:
@@ -62,13 +57,7 @@ class Admin(commands.Cog):
         if not allowed:
             return await interaction.response.send_message(message, ephemeral=True)
 
-        embed = discord.Embed(
-            title="⚠️ Aviso",
-            description=f"{member.mention} foi avisado.",
-            color=discord.Color.gold()
-        )
-        embed.add_field(name="Motivo", value=reason, inline=False)
-        embed.set_footer(text=f"Aviso por {interaction.user}", icon_url=interaction.user.display_avatar.url)
+        embed = WarnEmbed(member, reason, interaction.user).build()
         await interaction.response.send_message(embed=embed)
 
         try:
@@ -144,9 +133,16 @@ class Admin(commands.Cog):
         try:
             await member.kick(reason=reason)
         except Exception as exc:
-            return await interaction.response.send_message(f"Não foi possível expulsar: {exc}", ephemeral=True)
+            embed = ErrorEmbed("❌ Erro", f"Não foi possível expulsar: {exc}").build()
+            return await interaction.response.send_message(embed=embed, ephemeral=True)
 
-        await interaction.response.send_message(f"👢 {member.mention} foi expulso. Motivo: {reason}")
+        embed = discord.Embed(
+            title="👢 Membro Expulso",
+            description=f"{member.mention} foi expulso.",
+            color=discord.Color.red()
+        )
+        embed.add_field(name="Motivo", value=reason, inline=False)
+        await interaction.response.send_message(embed=embed)
 
     # ===== BAN COMMAND =====
     @commands.command(name="ban")
@@ -175,9 +171,16 @@ class Admin(commands.Cog):
         try:
             await member.ban(reason=reason)
         except Exception as exc:
-            return await interaction.response.send_message(f"Não foi possível banir: {exc}", ephemeral=True)
+            embed = ErrorEmbed("❌ Erro", f"Não foi possível banir: {exc}").build()
+            return await interaction.response.send_message(embed=embed, ephemeral=True)
 
-        await interaction.response.send_message(f"⛔ {member.mention} foi banido. Motivo: {reason}")
+        embed = discord.Embed(
+            title="⛔ Membro Banido",
+            description=f"{member.mention} foi banido.",
+            color=discord.Color.dark_red()
+        )
+        embed.add_field(name="Motivo", value=reason, inline=False)
+        await interaction.response.send_message(embed=embed)
 
 async def setup(bot):
     await bot.add_cog(Admin(bot))
