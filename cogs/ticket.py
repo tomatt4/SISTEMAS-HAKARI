@@ -123,19 +123,23 @@ class Tickets(commands.Cog):
     @app_commands.command(name="fechar", description="Fecha um ticket")
     async def fechar_slash(self, interaction: discord.Interaction):
         """Comando para fechar um ticket (slash)"""
+        # Verificar se é um canal de ticket
         if not interaction.channel.name.startswith("ticket-"):
-            embed = await ErrorEmbed("Erro", "Este comando só pode ser usado em canais de ticket!")
+            embed = ErrorEmbed("❌ Erro", "Este comando só pode ser usado em canais de ticket!").build()
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
+        # Obter o cargo de suporte
         support_role = interaction.guild.get_role(SUPPORT_ROLE_ID)
         
+        # Verificar se o usuário tem o cargo de suporte
         if support_role not in interaction.user.roles:
-            embed = await ErrorEmbed("Permissão Negada", "Só administradores podem usar o comando")
+            embed = ErrorEmbed("❌ Permissão Negada", "Só administradores podem usar o comando").build()
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
-        embed = await ConfirmCloseTicketEmbed()
+        # Criar embed de confirmação
+        embed = ConfirmCloseTicketEmbed().build()
         await interaction.response.send_message(embed=embed, view=CloseTicketView(interaction.channel))
 
 async def setup(bot):
