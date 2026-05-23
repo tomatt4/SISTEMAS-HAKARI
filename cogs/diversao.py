@@ -5,6 +5,7 @@ from discord.ext import commands
 from discord import app_commands
 
 LOGS_CHANNEL_ID = 1490679538559221770
+CONFISSOES_CHANNEL_ID = 1507592685282787421
 cooldowns = {}
 
 class ConfissaoModal(discord.ui.Modal, title="Confissão Anônima"):
@@ -19,35 +20,49 @@ class ConfissaoModal(discord.ui.Modal, title="Confissão Anônima"):
     )
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Obter o canal de logs
+        # Obter os canais
         logs_channel = interaction.client.get_channel(LOGS_CHANNEL_ID)
+        confissoes_channel = interaction.client.get_channel(CONFISSOES_CHANNEL_ID)
         
-        if not logs_channel:
+        if not logs_channel or not confissoes_channel:
             await interaction.response.send_message(
-                "❌ Não foi possível enviar sua confissão. Canal de logs não encontrado.",
+                "❌ Não foi possível enviar sua confissão. Canais não encontrados.",
                 ephemeral=True
             )
             return
 
-        # Criar embed da confissão
+        # Obter o texto da confissão
         confissao_text = self.confissao.value
         
-        embed = discord.Embed(
+        # Embed para o canal de confissões (anônimo)
+        confissao_embed = discord.Embed(
             title="🔐 Confissão Anônima",
             description=confissao_text,
             color=discord.Color.purple()
         )
-        embed.add_field(
-            name="📝 Enviado por",
+        confissao_embed.set_footer(text="Confissão anônima")
+        confissao_embed.timestamp = discord.utils.utcnow()
+        
+        # Embed para o canal de logs (com quem enviou)
+        log_embed = discord.Embed(
+            title="📋 Log de Confissão",
+            description=confissao_text,
+            color=discord.Color.greyple()
+        )
+        log_embed.add_field(
+            name="👤 Enviado por",
             value=f"{interaction.user.mention} ({interaction.user.id})",
             inline=False
         )
-        embed.set_footer(text=f"Guild: {interaction.guild.name}")
-        embed.timestamp = discord.utils.utcnow()
+        log_embed.set_footer(text=f"Guild: {interaction.guild.name}")
+        log_embed.timestamp = discord.utils.utcnow()
 
         try:
-            # Enviar para o canal de logs
-            await logs_channel.send(embed=embed)
+            # Enviar confissão anônima para o canal de confissões
+            await confissoes_channel.send(embed=confissao_embed)
+            
+            # Enviar log para o canal de logs
+            await logs_channel.send(embed=log_embed)
             
             # Confirmar ao usuário
             await interaction.response.send_message(
@@ -92,7 +107,7 @@ class Diversao(commands.Cog):
             except Exception:
                 pass
 
-        await ctx.send("🍅 O tomate foi lançado.")
+        await ctx.send("🍅 Tomate lançado!")
 
     @app_commands.command(name="tomate", description="Lança um tomate em uma mensagem aleatória")
     async def tomate_slash(self, interaction: discord.Interaction):
