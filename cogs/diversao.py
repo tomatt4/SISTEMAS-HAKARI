@@ -14,7 +14,7 @@ class ConfissaoModal(discord.ui.Modal, title="Confissão Anônima"):
         label="Sua Confissão",
         placeholder="Escreva sua confissão aqui...",
         style=discord.TextStyle.paragraph,
-        min_length=10,
+        min_length=3,
         max_length=4000,
         required=True
     )
