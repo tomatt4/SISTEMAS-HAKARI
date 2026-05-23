@@ -22,7 +22,7 @@ class Admin(commands.Cog):
 
     def _parse_duration(self, duration: str) -> Optional[int]:
         """Converte duração em segundos (ex: 10m, 1h, 30s)"""
-        multipliers = {"s": 1, "m": 60, "h": 3600, "d": 86400}
+        multipliers = {"sec": 1, "min": 60, "h": 3600, "d": 86400}
         try:
             amount = duration[:-1]
             unit = duration[-1:].lower()
