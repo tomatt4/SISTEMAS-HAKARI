@@ -8,11 +8,11 @@ LOGS_CHANNEL_ID = 1490679538559221770
 CONFISSOES_CHANNEL_ID = 1507592685282787421
 cooldowns = {}
 
-class ConfissaoModal(discord.ui.Modal, title="Confissão Anônima"):
+class ConfissaoModal(discord.ui.Modal, title="confissão anônima"):
     """Modal para enviar confissões anônimas"""
     confissao = discord.ui.TextInput(
-        label="Sua Confissão",
-        placeholder="Escreva sua confissão aqui...",
+        label="sua confissão",
+        placeholder="escreva sua confissão aqui...",
         style=discord.TextStyle.paragraph,
         min_length=3,
         max_length=4000,
@@ -26,7 +26,7 @@ class ConfissaoModal(discord.ui.Modal, title="Confissão Anônima"):
         
         if not logs_channel or not confissoes_channel:
             await interaction.response.send_message(
-                "❌ Não foi possível enviar sua confissão. Canais não encontrados.",
+                "não foi possível enviar sua confissão, avisa isso pro salva",
                 ephemeral=True
             )
             return
@@ -36,25 +36,24 @@ class ConfissaoModal(discord.ui.Modal, title="Confissão Anônima"):
         
         # Embed para o canal de confissões (anônimo)
         confissao_embed = discord.Embed(
-            title="🔐 Confissão Anônima",
+            title="🔐 confissão Anônima",
             description=confissao_text,
             color=discord.Color.purple()
         )
-        confissao_embed.set_footer(text="Confissão anônima")
+        confissao_embed.set_footer(text="confissão anônima")
         confissao_embed.timestamp = discord.utils.utcnow()
         
         # Embed para o canal de logs (com quem enviou)
         log_embed = discord.Embed(
-            title="📋 Log de Confissão",
+            title="📋 log de Confissão",
             description=confissao_text,
             color=discord.Color.greyple()
         )
         log_embed.add_field(
-            name="👤 Enviado por",
+            name="👤 enviado por",
             value=f"{interaction.user.mention} ({interaction.user.id})",
             inline=False
         )
-        log_embed.set_footer(text=f"Guild: {interaction.guild.name}")
         log_embed.timestamp = discord.utils.utcnow()
 
         try:
@@ -66,12 +65,12 @@ class ConfissaoModal(discord.ui.Modal, title="Confissão Anônima"):
             
             # Confirmar ao usuário
             await interaction.response.send_message(
-                "✅ Sua confissão foi enviada anonimamente!",
+                "✅ sua confissão foi enviada anonimamente!",
                 ephemeral=True
             )
         except Exception as e:
             await interaction.response.send_message(
-                f"❌ Erro ao enviar confissão: {e}",
+                f"❌ erro ao enviar confissão(avisa pro salva): {e}",
                 ephemeral=True
             )
 
@@ -107,7 +106,7 @@ class Diversao(commands.Cog):
             except Exception:
                 pass
 
-        await ctx.send("🍅 Tomate lançado!")
+        await ctx.send("🍅 tomate lançado!")
 
     @app_commands.command(name="tomate", description="Lança um tomate em uma mensagem aleatória")
     async def tomate_slash(self, interaction: discord.Interaction):
@@ -120,7 +119,7 @@ class Diversao(commands.Cog):
 
                 if remaining > 0:
                     await interaction.response.send_message(
-                        f"⏳ Espere {int(remaining)} segundos para usar novamente.",
+                        f"⏳ espere {int(remaining)} segundos para usar novamente",
                         ephemeral=True
                     )
                     return
@@ -137,7 +136,7 @@ class Diversao(commands.Cog):
             except Exception:
                 pass
 
-        await interaction.response.send_message("🍅 O tomate foi lançado.")
+        await interaction.response.send_message("🍅 tomate lançado!")
 
     # ===== COMANDO CONFISSÃO =====
     @app_commands.command(name="confissao", description="Envie uma confissão anônima")

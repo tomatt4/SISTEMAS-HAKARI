@@ -23,7 +23,7 @@ class ServerInfo(commands.Cog):
             embed.set_image(url=guild.banner.url)
 
         embed.add_field(
-            name="👑 Dono",
+            name="👑 Dono com Posse",
             value=str(guild.owner),
             inline=False
         )
@@ -71,7 +71,7 @@ class ServerInfo(commands.Cog):
             embed.set_image(url=guild.banner.url)
 
         embed.add_field(
-            name="👑 Dono",
+            name="👑 Dono com Posse",
             value=str(guild.owner),
             inline=False
         )
@@ -194,8 +194,8 @@ class Utilities(commands.Cog):
         latency = round(self.bot.latency * 1000)
         
         embed = discord.Embed(
-            title="🏓 Pong!",
-            description=f"Latência da API: **{latency}ms** | Ligado 24/7 com **Render** e **UptimeRobot**",
+            title="🏓 pong!",
+            description=f"latência da API: **{latency} milissegundos** | ligado 24/7 com **Render** e **UptimeRobot**\nse essa embed estiver em vermelho, **a latência está ruim**\nse estiver verde, **ela está boa**\nse estiver amarela, **está mais ou menos**",
             color=discord.Color.green() if latency < 100 else discord.Color.yellow() if latency < 200 else discord.Color.red()
         )
         
@@ -207,8 +207,8 @@ class Utilities(commands.Cog):
         latency = round(self.bot.latency * 1000)
         
         embed = discord.Embed(
-            title="🏓 Pong!",
-            description=f"Latência da API: **{latency}ms** | Ligado 24/7 com **Render** e **UptimeRobot**",
+            title="🏓 pong!",
+            description=f"latência da API: **{latency} milissegundos** | ligado 24/7 com **Render** e **UptimeRobot**\nse essa embed estiver em vermelho, **a latência está ruim**\nse estiver verde, **ela está boa**\nse estiver amarela, **está mais ou menos**",
             color=discord.Color.green() if latency < 100 else discord.Color.yellow() if latency < 200 else discord.Color.red()
         )
         
