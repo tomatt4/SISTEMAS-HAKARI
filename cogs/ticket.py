@@ -44,8 +44,8 @@ class TicketView(discord.ui.View):
 
         channel = await guild.create_text_channel(
             name=f"ticket-{interaction.user.name}",
-            overwrites=overwrites
-            description=f"ID do usuário: {interaction.user_id}"
+            overwrites=overwrites,
+            topic=f"ID do usuário: {interaction.user.id}"
         )
 
         embed = discord.Embed(
