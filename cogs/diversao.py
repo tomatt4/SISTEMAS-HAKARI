@@ -8,8 +8,10 @@ LOGS_CHANNEL_ID = 1490679538559221770
 CONFISSOES_CHANNEL_ID = 1507592685282787421
 cooldowns = {}
 
-class ConfissaoModal(discord.ui.Modal, title="confissão anônima"):
+class ConfissaoModal(discord.ui.Modal):
     """Modal para enviar confissões anônimas"""
+    title = "confissão anônima"
+    
     confissao = discord.ui.TextInput(
         label="sua confissão",
         placeholder="escrever uma confissão inadequada pode resultar em uma punição dependendo do que você confessou.",
@@ -37,7 +39,7 @@ class ConfissaoModal(discord.ui.Modal, title="confissão anônima"):
         # Embed para o canal de confissões (anônimo)
         confissao_embed = discord.Embed(
             title="🔐 nova confissão anônima",
-            description="confissão:",confissao_text,
+            description=f"confissão: {confissao_text}",
             color=discord.Color.purple()
         )
         
@@ -47,7 +49,7 @@ class ConfissaoModal(discord.ui.Modal, title="confissão anônima"):
         # Embed para o canal de logs (com quem enviou)
         log_embed = discord.Embed(
             title="📋 fizero uma confissão ai",
-            description="confissão:", confissao_text,
+            description=f"confissão: {confissao_text}",
             color=discord.Color.greyple()
         )
         log_embed.add_field(
