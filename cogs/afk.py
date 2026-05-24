@@ -109,18 +109,10 @@ class AFK(commands.Cog):
         if afk_mentioned:
             embed = discord.Embed(
                 title="⏱️ aviso",
-                description="esse caba ai ta afk macho/macha:",
+                description="esse caba ai ta afk macho/macha: {user.mention}",
                 color=discord.Color.orange()
             )
             
-            for user, reason in afk_mentioned:
-                embed.add_field(
-                    name=f"{user.name} {user.mention}",
-                    value=f"**Motivo:** {reason}",
-                    inline=False
-                )
-            
-            embed.set_footer(text=f"Aviso enviado para {message.author}", icon_url=message.author.display_avatar.url)
             await message.reply(embed=embed, mention_author=False)
         
         await self.bot.process_commands(message)
