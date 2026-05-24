@@ -85,11 +85,11 @@ class Diversao(commands.Cog):
     @commands.command(name="tomate")
     async def tomate_prefix(self, ctx):
         """Lança um tomate em uma mensagem aleatória (prefixo)"""
-        if not ctx.author.guild_permissions.administrator:
+        if ctx.author.id != ctx.guild.owner_id:
             last_used = cooldowns.get(ctx.author.id)
 
             if last_used:
-                remaining = 1200 - (time.time() - last_used)
+                remaining = 7200 - (time.time() - last_used)
 
                 if remaining > 0:
                     await ctx.send(
@@ -114,11 +114,11 @@ class Diversao(commands.Cog):
     @app_commands.command(name="tomate", description="Lança um tomate em uma mensagem aleatória")
     async def tomate_slash(self, interaction: discord.Interaction):
         """Lança um tomate em uma mensagem aleatória (slash)"""
-        if not interaction.user.guild_permissions.administrator:
+        if interaction.user.id != interaction.guild.owner_id:
             last_used = cooldowns.get(interaction.user.id)
 
             if last_used:
-                remaining = 1200 - (time.time() - last_used)
+                remaining = 7200 - (time.time() - last_used)
 
                 if remaining > 0:
                     await interaction.response.send_message(
