@@ -45,6 +45,7 @@ class TicketView(discord.ui.View):
         channel = await guild.create_text_channel(
             name=f"ticket-{interaction.user.name}",
             overwrites=overwrites
+            description=f"ID do usuário: {interaction.user_id}"
         )
 
         embed = discord.Embed(
@@ -82,8 +83,9 @@ class CloseTicketView(discord.ui.View):
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
             title="cancelado",
-            description="ticket não foi fechado",
+            description="ticket não será fechado",
             color=discord.Color.red()
+            ephemeral=True
         )
         await interaction.response.send_message(embed=embed, ephemeral=True)
         self.stop()
@@ -131,8 +133,8 @@ class Tickets(commands.Cog):
         # Verificar se é um canal de ticket
         if not ctx.channel.name.startswith("ticket-"):
             embed = discord.Embed(
-                title="❌ Erro",
-                description="Este comando só pode ser usado em canais de ticket!",
+                title="❌ erro",
+                description="este comando só pode ser usado em canais de ticket",
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
@@ -147,6 +149,7 @@ class Tickets(commands.Cog):
                 title="❌ epa pera aí amigão",
                 description="só administradores podem fechar o ticket",
                 color=discord.Color.red()
+                ephemeral=True
             )
             await ctx.send(embed=embed)
             return
@@ -156,6 +159,7 @@ class Tickets(commands.Cog):
             title="⚠️ confirmação de fechamento",
             description="quer mesmo fechar este ticket?",
             color=discord.Color.yellow()
+            ephemeral=True
         )
 
         await ctx.send(embed=embed, view=CloseTicketView(ctx.channel))
@@ -182,6 +186,7 @@ class Tickets(commands.Cog):
                 title="❌ pera aí meu negão",
                 description="só administradores podem fechar o ticket",
                 color=discord.Color.red()
+                ephemeral=True
             )
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
@@ -191,6 +196,7 @@ class Tickets(commands.Cog):
             title="⚠️ confirmação de fechamento",
             description="tem certeza que deseja fechar este ticket?",
             color=discord.Color.yellow()
+            ephemeral=True
         )
 
         await interaction.response.send_message(embed=embed, view=CloseTicketView(interaction.channel))

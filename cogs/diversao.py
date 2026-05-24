@@ -12,9 +12,9 @@ class ConfissaoModal(discord.ui.Modal, title="confissão anônima"):
     """Modal para enviar confissões anônimas"""
     confissao = discord.ui.TextInput(
         label="sua confissão",
-        placeholder="escreva sua confissão aqui...",
+        placeholder="escrever uma confissão inadequada pode resultar em uma punição dependendo do que você confessou.",
         style=discord.TextStyle.paragraph,
-        min_length=3,
+        min_length=1,
         max_length=4000,
         required=True
     )
@@ -36,17 +36,17 @@ class ConfissaoModal(discord.ui.Modal, title="confissão anônima"):
         
         # Embed para o canal de confissões (anônimo)
         confissao_embed = discord.Embed(
-            title="🔐 confissão Anônima",
-            description=confissao_text,
+            title="🔐 nova confissão anônima",
+            description="confissão:",confissao_text,
             color=discord.Color.purple()
         )
-        confissao_embed.set_footer(text="confissão anônima")
+        confissao_embed.set_footer(text="as confissões são totalmente anônimas")
         confissao_embed.timestamp = discord.utils.utcnow()
         
         # Embed para o canal de logs (com quem enviou)
         log_embed = discord.Embed(
-            title="📋 log de Confissão",
-            description=confissao_text,
+            title="📋 fizero uma confissão ai",
+            description="confissão:", confissao_text,
             color=discord.Color.greyple()
         )
         log_embed.add_field(
@@ -90,7 +90,7 @@ class Diversao(commands.Cog):
 
                 if remaining > 0:
                     await ctx.send(
-                        f"⏳ Espere {int(remaining)} segundos para usar novamente."
+                        f"⏳ espere {int(remaining)} segundos para usar novamente"
                     )
                     return
 
