@@ -151,7 +151,7 @@ class UserInfo(commands.Cog):
         member = member or interaction.user
 
         embed = discord.Embed(
-            title=f"👤 Informações de {member}",
+            title=f"👤 informações de {member}",
             color=discord.Color.blue()
         )
 
@@ -164,19 +164,19 @@ class UserInfo(commands.Cog):
         )
 
         embed.add_field(
-            name="📅 Conta criada",
+            name="📅 conta criada",
             value=member.created_at.strftime("%d/%m/%Y"),
             inline=True
         )
 
         embed.add_field(
-            name="📥 Entrou no servidor",
+            name="📥 entrou no servidor",
             value=member.joined_at.strftime("%d/%m/%Y"),
             inline=True
         )
 
         embed.add_field(
-            name="🤖 Bot?",
+            name="🤖 bot?",
             value=str(member.bot),
             inline=True
         )
@@ -195,7 +195,7 @@ class Utilities(commands.Cog):
         
         embed = discord.Embed(
             title="🏓 pong!",
-            description=f"latência da API: **{latency} milissegundos** | ligado 24/7 com **Render** e **UptimeRobot**\nse essa embed estiver em vermelho, **a latência está ruim**\nse estiver verde, **ela está boa**\nse estiver amarela, **está mais ou menos**",
+            description=f"latência da API: **{latency} milissegundos** | ligado 24/7 com **Render** e **UptimeRobot**",
             color=discord.Color.green() if latency < 100 else discord.Color.yellow() if latency < 200 else discord.Color.red()
         )
         
@@ -208,7 +208,7 @@ class Utilities(commands.Cog):
         
         embed = discord.Embed(
             title="🏓 pong!",
-            description=f"latência da API: **{latency} milissegundos** | ligado 24/7 com **Render** e **UptimeRobot**\nse essa embed estiver em vermelho, **a latência está ruim**\nse estiver verde, **ela está boa**\nse estiver amarela, **está mais ou menos**",
+            description=f"latência da API: **{latency} milissegundos** | ligado 24/7 com **Render** e **UptimeRobot**",
             color=discord.Color.green() if latency < 100 else discord.Color.yellow() if latency < 200 else discord.Color.red()
         )
         
