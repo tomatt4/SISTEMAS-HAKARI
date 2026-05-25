@@ -16,7 +16,8 @@ SPECIAL_ROLE_IDS = {
     1490679537019654303,
     1490679537032495299,
     1491090814254841886,
-    1496282936331337789
+    1496282936331337789,
+    1500969290093039626
 }
 REPUTATION_FILE = "reputation_data.json"
 REPUTATION_COOLDOWN_FILE = "reputation_cooldowns.json"
@@ -269,8 +270,8 @@ class Diversao(commands.Cog):
         if args[0].lower() == "quantidade":
             rep = self.get_user_reputation(ctx.author.id, ctx.guild.id)
             embed = discord.Embed(
-                title=f"📊 Reputação de {ctx.author.name}",
-                description=f"Você tem **{rep}** de reputação",
+                title=f"📊 reputação de {ctx.author.name}",
+                description=f"você tem **{rep}** de reputação",
                 color=discord.Color.gold()
             )
             await ctx.send(embed=embed)
@@ -310,17 +311,17 @@ class Diversao(commands.Cog):
         self.set_cooldown(ctx.author.id, ctx.guild.id)
         
         embed = discord.Embed(
-            title="✅ Reputação Adicionada",
+            title="✅ reputação adicionada",
             description=f"{ctx.author.mention} deu **{rep_amount}** de reputação para {target_user.mention}",
             color=discord.Color.green()
         )
         embed.add_field(
-            name="Total de Reputação",
+            name="total de reputação",
             value=str(self.get_user_reputation(target_user.id, ctx.guild.id)),
             inline=False
         )
         embed.add_field(
-            name="Próximo uso em",
+            name="próximo uso em",
             value=f"{REPUTATION_COOLDOWN_HOURS} horas",
             inline=False
         )
@@ -328,8 +329,8 @@ class Diversao(commands.Cog):
     
     @app_commands.command(name="rep", description="Sistema de reputação")
     @app_commands.describe(
-        subcommand="Ação: dar, quantidade ou rank",
-        usuario="Usuário para dar reputação"
+        subcommand="ação: dar, quantidade ou rank",
+        usuario="usuário para dar reputação"
     )
     async def rep_slash(
         self, 
@@ -344,8 +345,8 @@ class Diversao(commands.Cog):
         if subcommand == "quantidade":
             rep = self.get_user_reputation(interaction.user.id, interaction.guild.id)
             embed = discord.Embed(
-                title=f"📊 Reputação de {interaction.user.name}",
-                description=f"Você tem **{rep}** de reputação",
+                title=f"📊 reputação de {interaction.user.name}",
+                description=f"você tem **{rep}** reputações",
                 color=discord.Color.gold()
             )
             await interaction.response.send_message(embed=embed)
@@ -397,17 +398,17 @@ class Diversao(commands.Cog):
             self.set_cooldown(interaction.user.id, interaction.guild.id)
             
             embed = discord.Embed(
-                title="✅ Reputação Adicionada",
+                title="✅ reputação adicionada",
                 description=f"{interaction.user.mention} deu **{rep_amount}** de reputação para {usuario.mention}",
                 color=discord.Color.green()
             )
             embed.add_field(
-                name="Total de Reputação",
+                name="total de reputação",
                 value=str(self.get_user_reputation(usuario.id, interaction.guild.id)),
                 inline=False
             )
             embed.add_field(
-                name="Próximo uso em",
+                name="próximo uso em",
                 value=f"{REPUTATION_COOLDOWN_HOURS} horas",
                 inline=False
             )
@@ -429,8 +430,8 @@ class Diversao(commands.Cog):
         """Mostra sua reputação atual (prefixo)"""
         rep = self.get_user_reputation(ctx.author.id, ctx.guild.id)
         embed = discord.Embed(
-            title=f"📊 Reputação de {ctx.author.name}",
-            description=f"Você tem **{rep}** de reputação",
+            title=f"📊 reputação de {ctx.author.name}",
+            description=f"você tem **{rep}** de reputação",
             color=discord.Color.gold()
         )
         await ctx.send(embed=embed)
@@ -452,11 +453,10 @@ class Diversao(commands.Cog):
                 ranking_text += f"{i}. Usuário #{user_id} - {rep} reputação\n"
         
         embed = discord.Embed(
-            title="🏆 Top 10 - Ranking de Reputação",
+            title="🏆 top 10 - ranking de reputação",
             description=ranking_text,
             color=discord.Color.gold()
         )
-        embed.set_footer(text=f"Servidor: {ctx.guild.name}")
         await ctx.send(embed=embed)
     
     async def show_reputation_ranking_slash(self, interaction: discord.Interaction, server_id: int):
@@ -473,10 +473,10 @@ class Diversao(commands.Cog):
                 user = await self.bot.fetch_user(user_id)
                 ranking_text += f"{i}. **{user.mention}** - {rep} reputação\n"
             except:
-                ranking_text += f"{i}. Usuário #{user_id} - {rep} reputação\n"
+                ranking_text += f"{i}. usuário #{user_id} - {rep} reputação\n"
         
         embed = discord.Embed(
-            title="🏆 Top 10 - Ranking de Reputação",
+            title="🏆 top 10 - ranking de reputação",
             description=ranking_text,
             color=discord.Color.gold()
         )
