@@ -114,8 +114,6 @@ class AFK(commands.Cog):
             )
             
             await message.reply(embed=embed, mention_author=False)
-        
-        await self.bot.process_commands(message)
 
 async def setup(bot: commands.Bot):
     await bot.add_cog(AFK(bot))

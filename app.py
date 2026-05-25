@@ -69,9 +69,22 @@ async def on_error(event, *args, **kwargs):
     traceback.print_exception(exc_type, exc_value, exc_traceback)
     
 async def load_cogs():
+    """Carrega todos os cogs da pasta ./cogs"""
     for filename in os.listdir("./cogs"):
         if filename.endswith(".py"):
-            await bot.load_extension(f"cogs.{filename[:-3]}")
+            cog_name = f"cogs.{filename[:-3]}"
+            try:
+                # Tenta descarregar em caso de reload
+                try:
+                    await bot.unload_extension(cog_name)
+                except commands.ExtensionNotLoaded:
+                    pass
+                
+                # Carrega a cog
+                await bot.load_extension(cog_name)
+                print(f"✅ Cog carregada: {cog_name}")
+            except Exception as e:
+                print(f"❌ Erro ao carregar cog {cog_name}: {e}")
 
 async def main():
     async with bot:
