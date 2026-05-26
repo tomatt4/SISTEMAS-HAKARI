@@ -195,11 +195,11 @@ class Diversao(commands.Cog):
             last_used = cooldowns.get(ctx.author.id)
 
             if last_used:
-                remaining = 7200 - (time.time() - last_used)
+                remaining = 1200 - (time.time() - last_used)
 
                 if remaining > 0:
                     await ctx.send(
-                        f"⏳ espere {int(remaining)} segundos para usar novamente"
+                        f"⏳ cooldown de 20 min ativo"
                     )
                     return
 
