@@ -6,7 +6,7 @@ import os
 from typing import Optional
 
 # ID do canal onde o painel será enviado
-PAINEL_CHANNEL_ID = 1507595486889115698
+PAINEL_CHANNEL_ID = 1454971586758180907
 
 # Arquivo para armazenar dados das calls
 CALLS_DATA_FILE = "calls_data.json"
@@ -23,13 +23,13 @@ def save_calls_data(data):
     with open(CALLS_DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-class NomeCallModal(discord.ui.Modal, title="Configurar Nome da Call"):
+class NomeCallModal(discord.ui.Modal, title="configurar nome da call"):
     """Modal para configurar o nome da call"""
     nome = discord.ui.TextInput(
-        label="Nome da Call",
-        placeholder="Digite o novo nome (deixe em branco para padrão)",
+        label="nome da call",
+        placeholder="digite o novo nome (deixe em branco para padrão)",
         required=False,
-        max_length=100
+        max_length=50
     )
 
     async def on_submit(self, interaction: discord.Interaction):
@@ -39,7 +39,7 @@ class NomeCallModal(discord.ui.Modal, title="Configurar Nome da Call"):
         voice_channel_id = str(interaction.user.id)
         
         if voice_channel_id not in calls_data:
-            await interaction.followup.send("❌ Você não possui uma call ativa!", ephemeral=True)
+            await interaction.followup.send("❌ você não possui uma call ativa!", ephemeral=True)
             return
         
         novo_nome = self.nome.value.strip() if self.nome.value else f"Call de {interaction.user.name}"
@@ -50,11 +50,11 @@ class NomeCallModal(discord.ui.Modal, title="Configurar Nome da Call"):
                 await channel.edit(name=novo_nome)
                 calls_data[voice_channel_id]["nome"] = novo_nome
                 save_calls_data(calls_data)
-                await interaction.followup.send(f"✅ Nome da call alterado para: **{novo_nome}**", ephemeral=True)
+                await interaction.followup.send(f"✅ nome da call alterado para: **{novo_nome}**", ephemeral=True)
             else:
-                await interaction.followup.send("❌ Canal da call não encontrado!", ephemeral=True)
+                await interaction.followup.send("❌ canal da call não encontrado!", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"❌ Erro ao alterar nome: {str(e)}", ephemeral=True)
+            await interaction.followup.send(f"❌ erro ao alterar nome: {str(e)}", ephemeral=True)
 
 class LimiteCallModal(discord.ui.Modal, title="Configurar Limite de Pessoas"):
     """Modal para configurar o limite de pessoas na call"""
@@ -72,7 +72,7 @@ class LimiteCallModal(discord.ui.Modal, title="Configurar Limite de Pessoas"):
         voice_channel_id = str(interaction.user.id)
         
         if voice_channel_id not in calls_data:
-            await interaction.followup.send("❌ Você não possui uma call ativa!", ephemeral=True)
+            await interaction.followup.send("❌ você não possui uma call ativa!", ephemeral=True)
             return
         
         try:
@@ -80,7 +80,7 @@ class LimiteCallModal(discord.ui.Modal, title="Configurar Limite de Pessoas"):
             limite = int(limite_texto) if limite_texto else 0
             
             if limite < 0:
-                await interaction.followup.send("❌ O limite não pode ser negativo!", ephemeral=True)
+                await interaction.followup.send("❌ o limite não pode ser negativo!", ephemeral=True)
                 return
             
             channel = interaction.guild.get_channel(int(calls_data[voice_channel_id]["channel_id"]))
@@ -90,13 +90,13 @@ class LimiteCallModal(discord.ui.Modal, title="Configurar Limite de Pessoas"):
                 save_calls_data(calls_data)
                 
                 limite_texto = "sem limite" if limite == 0 else f"{limite} pessoa(s)"
-                await interaction.followup.send(f"✅ Limite da call definido para: **{limite_texto}**", ephemeral=True)
+                await interaction.followup.send(f"✅ limite da call definido para: **{limite_texto}**", ephemeral=True)
             else:
-                await interaction.followup.send("❌ Canal da call não encontrado!", ephemeral=True)
+                await interaction.followup.send("❌ canal da call não encontrado!", ephemeral=True)
         except ValueError:
-            await interaction.followup.send("❌ Digite um número válido!", ephemeral=True)
+            await interaction.followup.send("❌ digite um número válido!", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"❌ Erro ao alterar limite: {str(e)}", ephemeral=True)
+            await interaction.followup.send(f"❌ erro ao alterar limite: {str(e)}", ephemeral=True)
 
 class ConfigCallView(discord.ui.View):
     """View com os botões de configuração da call"""
@@ -120,13 +120,13 @@ class ConfigCallView(discord.ui.View):
         voice_channel_id = str(interaction.user.id)
         
         if voice_channel_id not in calls_data:
-            await interaction.followup.send("❌ Você não possui uma call ativa!", ephemeral=True)
+            await interaction.followup.send("❌ você não possui uma call ativa!", ephemeral=True)
             return
         
         try:
             channel = interaction.guild.get_channel(int(calls_data[voice_channel_id]["channel_id"]))
             if not channel:
-                await interaction.followup.send("❌ Canal da call não encontrado!", ephemeral=True)
+                await interaction.followup.send("❌ canal da call não encontrado!", ephemeral=True)
                 return
             
             is_public = calls_data[voice_channel_id].get("publica", True)
@@ -157,9 +157,9 @@ class ConfigCallView(discord.ui.View):
             calls_data[voice_channel_id]["publica"] = novo_status
             save_calls_data(calls_data)
             
-            await interaction.followup.send(f"✅ Call definida como **{status_texto}**", ephemeral=True)
+            await interaction.followup.send(f"✅ call definida como **{status_texto}**", ephemeral=True)
         except Exception as e:
-            await interaction.followup.send(f"❌ Erro ao alterar privacidade: {str(e)}", ephemeral=True)
+            await interaction.followup.send(f"❌ erro ao alterar privacidade: {str(e)}", ephemeral=True)
 
 class CriarCallView(discord.ui.View):
     """View com o botão de criar call"""
@@ -179,7 +179,7 @@ class CriarCallView(discord.ui.View):
             if user_id in calls_data:
                 channel = interaction.guild.get_channel(int(calls_data[user_id]["channel_id"]))
                 if channel:
-                    await interaction.followup.send("❌ Você já possui uma call ativa! Delete-a primeiro.", ephemeral=True)
+                    await interaction.followup.send("❌ tu ja tem uma call abestado, delete ela com /deletarcall", ephemeral=True)
                     return
                 else:
                     del calls_data[user_id]
@@ -202,11 +202,11 @@ class CriarCallView(discord.ui.View):
             save_calls_data(calls_data)
             
             await interaction.followup.send(
-                f"✅ Call criada com sucesso!\n**{nome_padrao}**\n\nUse `/configcall` para gerenciar sua call.",
+                f"✅ call criada com sucesso!\n**{nome_padrao}**\n\nUse `/configcall` para gerenciar sua call.",
                 ephemeral=True
             )
         except Exception as e:
-            await interaction.followup.send(f"❌ Erro ao criar call: {str(e)}", ephemeral=True)
+            await interaction.followup.send(f"❌ erro ao criar call: {str(e)}", ephemeral=True)
 
 class Calls(commands.Cog):
     def __init__(self, bot):
@@ -244,7 +244,7 @@ class Calls(commands.Cog):
         try:
             channel = interaction.client.get_channel(PAINEL_CHANNEL_ID)
             if not channel:
-                await interaction.response.send_message("❌ Canal do painel não encontrado!", ephemeral=True)
+                await interaction.response.send_message("❌ canal do painel não encontrado!", ephemeral=True)
                 return
             
             embed = discord.Embed(
@@ -254,15 +254,15 @@ class Calls(commands.Cog):
             )
             embed.add_field(
                 name="O que você pode fazer?",
-                value="✅ Criar uma call com seu nome\n✅ Renomear sua call\n✅ Definir limite de pessoas\n✅ Deixar privada ou pública",
+                value="✅ criar uma call com seu nome\n✅ renomear sua call\n✅ definir limite de pessoas\n✅ deixar privada ou pública",
                 inline=False
             )
             embed.set_footer(text="Apenas você pode gerenciar sua call!")
             
             await channel.send(embed=embed, view=CriarCallView(self.bot))
-            await interaction.response.send_message("✅ Painel enviado com sucesso!", ephemeral=True)
+            await interaction.response.send_message("✅ painel enviado com sucesso!", ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro ao enviar painel: {str(e)}", ephemeral=True)
+            await interaction.response.send_message(f"❌ erro ao enviar painel: {str(e)}", ephemeral=True)
     
     @app_commands.command(name="configcall", description="Gerencia sua call personalizada")
     async def configcall(self, interaction: discord.Interaction):
@@ -272,7 +272,7 @@ class Calls(commands.Cog):
             user_id = str(interaction.user.id)
             
             if user_id not in calls_data:
-                await interaction.response.send_message("❌ Você não possui uma call ativa!", ephemeral=True)
+                await interaction.response.send_message("❌ você não possui uma call ativa!", ephemeral=True)
                 return
             
             call_info = calls_data[user_id]
@@ -281,7 +281,7 @@ class Calls(commands.Cog):
             if not channel:
                 del calls_data[user_id]
                 save_calls_data(calls_data)
-                await interaction.response.send_message("❌ Sua call foi deletada!", ephemeral=True)
+                await interaction.response.send_message("❌ sua call foi deletada!", ephemeral=True)
                 return
             
             # Cria a embed com as informações da call
@@ -309,7 +309,7 @@ class Calls(commands.Cog):
             
             await interaction.response.send_message(embed=embed, view=view, ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro ao carregar configurações: {str(e)}", ephemeral=True)
+            await interaction.response.send_message(f"❌ erro ao carregar configurações: {str(e)}", ephemeral=True)
     
     @app_commands.command(name="deletarcall", description="Deleta sua call personalizada")
     async def deletarcall(self, interaction: discord.Interaction):
@@ -319,7 +319,7 @@ class Calls(commands.Cog):
             user_id = str(interaction.user.id)
             
             if user_id not in calls_data:
-                await interaction.response.send_message("❌ Você não possui uma call ativa!", ephemeral=True)
+                await interaction.response.send_message("❌ você não possui uma call ativa!", ephemeral=True)
                 return
             
             channel = interaction.guild.get_channel(int(calls_data[user_id]["channel_id"]))
@@ -329,9 +329,9 @@ class Calls(commands.Cog):
             del calls_data[user_id]
             save_calls_data(calls_data)
             
-            await interaction.response.send_message("✅ Call deletada com sucesso!", ephemeral=True)
+            await interaction.response.send_message("✅ call deletada com sucesso!", ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro ao deletar call: {str(e)}", ephemeral=True)
+            await interaction.response.send_message(f"❌ erro ao deletar call: {str(e)}", ephemeral=True)
     
     @app_commands.command(name="listarcalls", description="Lista todas as calls ativas (apenas admins)")
     @app_commands.checks.has_permissions(administrator=True)
@@ -341,11 +341,11 @@ class Calls(commands.Cog):
             calls_data = load_calls_data()
             
             if not calls_data:
-                await interaction.response.send_message("📭 Nenhuma call ativa no momento.", ephemeral=True)
+                await interaction.response.send_message("📭 nenhuma call ativa no momento.", ephemeral=True)
                 return
             
             embed = discord.Embed(
-                title="📋 Calls Ativas",
+                title="📋 calls ativas",
                 color=discord.Color.blurple()
             )
             
@@ -359,14 +359,14 @@ class Calls(commands.Cog):
                         status_publica = "🟢 Pública" if call_info["publica"] else "🔴 Privada"
                         pessoas = len(channel.members)
                         
-                        info = f"**Nome:** {call_info['nome']}\n**Limite:** {limite_texto}\n**Status:** {status_publica}\n**Pessoas:** {pessoas}"
+                        info = f"**nome:** {call_info['nome']}\n**limite:** {limite_texto}\n**status:** {status_publica}\n**pessoas:** {pessoas}"
                         embed.add_field(name=f"👤 {user.name}", value=info, inline=False)
                 except Exception as e:
                     pass
             
             await interaction.response.send_message(embed=embed, ephemeral=True)
         except Exception as e:
-            await interaction.response.send_message(f"❌ Erro ao listar calls: {str(e)}", ephemeral=True)
+            await interaction.response.send_message(f"❌ erro ao listar calls: {str(e)}", ephemeral=True)
 
 async def setup(bot):
     await bot.add_cog(Calls(bot))
