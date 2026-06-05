@@ -45,10 +45,10 @@ async def on_ready():
     print(f'✅ Logado como {bot.user}')
     # Status do bot
     await bot.change_presence(
-        status=discord.Status.online,
+        status=discord.Status.idle,
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="Criado por Salvador | Ligado 24/7"
+            name="desenvolvido em Python por salva"
         )
     )
     rate_limit_handler.reset()
