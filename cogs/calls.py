@@ -23,11 +23,11 @@ def save_calls_data(data):
     with open(CALLS_DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-class NomeCallModal(discord.ui.Modal, title="configurar nome da call"):
+class NomeCallModal(discord.ui.Modal, title="Configurar Nome da Call"):
     """Modal para configurar o nome da call"""
     nome = discord.ui.TextInput(
-        label="nome da call",
-        placeholder="digite o novo nome (deixe em branco para padrão)",
+        label="Nome da Call",
+        placeholder="Digite o novo nome (deixe em branco para padrão)",
         required=False,
         max_length=50
     )
@@ -136,11 +136,7 @@ class ConfigCallView(discord.ui.View):
                 # Define permissões para pública (qualquer um pode entrar)
                 # Remove permissões específicas e volta ao padrão
                 for target in list(channel.overwrites.keys()):
-                    if target != interaction.guild.default_role:
-                        await channel.delete_permissions(target)
-                await channel.delete_permissions(interaction.guild.default_role)
-                button.style = discord.ButtonStyle.green
-                button.label = "Pública"
+                    await channel.set_permissions(target, overwrite=None)
                 status_texto = "🟢 Pública"
             else:  # Tornando privada
                 # Define permissões para privada (apenas o criador pode entrar)
@@ -150,14 +146,12 @@ class ConfigCallView(discord.ui.View):
                 # Permite acesso apenas para o criador
                 overwrite_owner = discord.PermissionOverwrite(connect=True)
                 await channel.set_permissions(interaction.user, overwrite=overwrite_owner)
-                button.style = discord.ButtonStyle.red
-                button.label = "Privada"
                 status_texto = "🔴 Privada"
             
             calls_data[voice_channel_id]["publica"] = novo_status
             save_calls_data(calls_data)
             
-            await interaction.followup.send(f"✅ call definida como **{status_texto}**", ephemeral=True)
+            await interaction.followup.send(f"✅ call definida como **{status_texto}**\n\n⚡ Execute `/configcall` novamente para ver o botão atualizado!", ephemeral=True)
         except Exception as e:
             await interaction.followup.send(f"❌ erro ao alterar privacidade: {str(e)}", ephemeral=True)
 
