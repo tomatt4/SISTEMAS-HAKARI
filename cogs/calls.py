@@ -23,10 +23,10 @@ def save_calls_data(data):
     with open(CALLS_DATA_FILE, "w") as f:
         json.dump(data, f, indent=4)
 
-class NomeCallModal(discord.ui.Modal, title="Configurar Nome da Call"):
+class NomeCallModal(discord.ui.Modal, title="Nome da Call"):
     """Modal para configurar o nome da call"""
-    nome = discord.ui.TextInput(
-        label="Nome da Call",
+    nome_input = discord.ui.TextInput(
+        label="Novo Nome",
         placeholder="Digite o novo nome (deixe em branco para padrão)",
         required=False,
         max_length=50
@@ -42,7 +42,7 @@ class NomeCallModal(discord.ui.Modal, title="Configurar Nome da Call"):
             await interaction.followup.send("❌ você não possui uma call ativa!", ephemeral=True)
             return
         
-        novo_nome = self.nome.value.strip() if self.nome.value else f"Call de {interaction.user.name}"
+        novo_nome = self.nome_input.value.strip() if self.nome_input.value else f"Call de {interaction.user.name}"
         
         try:
             channel = interaction.guild.get_channel(int(calls_data[voice_channel_id]["channel_id"]))
@@ -56,10 +56,10 @@ class NomeCallModal(discord.ui.Modal, title="Configurar Nome da Call"):
         except Exception as e:
             await interaction.followup.send(f"❌ erro ao alterar nome: {str(e)}", ephemeral=True)
 
-class LimiteCallModal(discord.ui.Modal, title="Configurar Limite de Pessoas"):
+class LimiteCallModal(discord.ui.Modal, title="Limite de Pessoas"):
     """Modal para configurar o limite de pessoas na call"""
-    limite = discord.ui.TextInput(
-        label="Limite de Pessoas",
+    limite_input = discord.ui.TextInput(
+        label="Limite",
         placeholder="Digite o número (deixe em branco para sem limite)",
         required=False,
         max_length=3
@@ -76,7 +76,7 @@ class LimiteCallModal(discord.ui.Modal, title="Configurar Limite de Pessoas"):
             return
         
         try:
-            limite_texto = self.limite.value.strip() if self.limite.value else "0"
+            limite_texto = self.limite_input.value.strip() if self.limite_input.value else "0"
             limite = int(limite_texto) if limite_texto else 0
             
             if limite < 0:
