@@ -48,7 +48,7 @@ async def on_ready():
         status=discord.Status.idle,
         activity=discord.Activity(
             type=discord.ActivityType.watching,
-            name="desenvolvido em Python por salva"
+            name="Hakari v2.3.15"
         )
     )
     rate_limit_handler.reset()
