@@ -31,14 +31,20 @@ class SupportStatus(commands.Cog):
         if role is None:
             return
 
-        suporte_online = any(
-            member.status != discord.Status.offline
+        staffs_online = sum(
+            1
             for member in role.members
-            if not member.bot
+            if not member.bot and member.status != discord.Status.offline
         )
 
+        suporte_online = staffs_online > 0
+
         novo_status = "on" if suporte_online else "off"
-        nova_mensagem = "Suporte On!" if suporte_online else "Suporte Off!"
+
+        if suporte_online:
+            nova_mensagem = f"suporte ativo: **{staffs_online} staff(s) online**."
+        else:
+            nova_mensagem = "suporte inativo: não tem staff online kkkkkkkkkkkkkkj."
 
         if self.last_status == novo_status:
             return
@@ -50,7 +56,7 @@ class SupportStatus(commands.Cog):
                 pass
 
         async for msg in channel.history(limit=20):
-            if msg.author == self.bot.user and msg.content in ["Suporte On!", "Suporte Off!"]:
+            if msg.author == self.bot.user and msg.content in ["suporte on: staffs online", "suporte off: tem nenhum staff online kkkkkkj"]:
                 try:
                     await msg.delete()
                 except:
