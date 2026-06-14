@@ -698,7 +698,7 @@ class Diversao(commands.Cog):
                 )
                 return
 
-        cooldowns[interaction.user.id] = time.time()
+                    cooldowns[interaction.user.id] = time.time()
 
     channel = interaction.channel
 
@@ -710,7 +710,7 @@ class Diversao(commands.Cog):
     if not messages:
         await interaction.response.send_message("🍅 não achei mensagem pra tacar tomate.")
         return
-
+        
     selected_msg = random.choice(messages)
 
     try:
