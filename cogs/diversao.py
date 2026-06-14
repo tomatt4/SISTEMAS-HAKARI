@@ -37,7 +37,7 @@ class ConfissaoModal(discord.ui.Modal):
     
     confissao = discord.ui.TextInput(
         label="sua confissão",
-        placeholder="escrever uma confissão inadequada pode resultar em uma punição dependendo do que você confessou.",
+        placeholder="não escreve merda que se não o pior pode vir cara.... não seja teimoso ☠️",
         style=discord.TextStyle.paragraph,
         min_length=1,
         max_length=4000,
@@ -63,7 +63,7 @@ class ConfissaoModal(discord.ui.Modal):
         confissao_embed = discord.Embed(
             title="🔐 nova confissão anônima",
             description=f"confissão: {confissao_text}",
-            color=discord.Color.purple()
+            color=0x0000
         )
         
         confissao_embed.set_footer(text="as confissões são totalmente anônimas")
@@ -71,9 +71,9 @@ class ConfissaoModal(discord.ui.Modal):
         
         # Embed para o canal de logs (com quem enviou)
         log_embed = discord.Embed(
-            title="📋 fizero uma confissão ai",
+            title="📋 fizeram uma confissão ai",
             description=f"confissão: {confissao_text}",
-            color=discord.Color.greyple()
+            color=0x0000
         )
         log_embed.add_field(
             name="👤 enviado por",
@@ -102,7 +102,7 @@ class ConfissaoModal(discord.ui.Modal):
             
             # Confirmar ao usuário
             await interaction.response.send_message(
-                "✅ sua confissão foi enviada anonimamente!",
+                "✅ sua confissão foi enviada anonimamente",
                 ephemeral=True
             )
         except Exception as e:
@@ -136,7 +136,7 @@ class RespostaConfissaoModal(discord.ui.Modal):
         
         if not confissoes_channel:
             await interaction.response.send_message(
-                "❌ erro ao enviar resposta",
+                f"❌ erro ao enviar resposta: ``{e}``, COPIA ESSE AVISO E FALA COM O SALVA PELO AMOR DE DEUS",
                 ephemeral=True
             )
             return
@@ -148,12 +148,7 @@ class RespostaConfissaoModal(discord.ui.Modal):
             # Criar embed de resposta
             resposta_embed = discord.Embed(
                 title="💬 resposta à confissão",
-                color=discord.Color.blue()
-            )
-            resposta_embed.add_field(
-                name="confissão",
-                value=self.confissao_text,
-                inline=False
+                color=0x0000
             )
             resposta_embed.add_field(
                 name="respondendo para",
@@ -165,7 +160,12 @@ class RespostaConfissaoModal(discord.ui.Modal):
                 value=self.resposta.value,
                 inline=False
             )
-            resposta_embed.set_footer(text="as respostas não são anônimas")
+            resposta_embed.add_field(
+                name="destinatário"
+                value=interaction.user.mention
+                inline=False
+            )
+            resposta_embed.set_footer(text="as confissões sempre são- pera aí, a água é azul porque o mar é azul ou é transparente porque a água de um copo é transparente🤔")
             resposta_embed.timestamp = discord.utils.utcnow()
             
             # Enviar a resposta no canal
