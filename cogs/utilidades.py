@@ -201,8 +201,8 @@ class Utilities(commands.Cog):
         embed = discord.Embed(
             title="🏓 pong!",
             description=(
-                f"latência da API: **{latency} milissegundos** | "
-                f"ligado 24/7 com **Render** e **UptimeRobot**"
+                f"latência da API: **{latency} milissegundos**",
+                "informações de hospedagem e monitoramento 24/7 estão no meu [site de monitoramento](https://hakari-voltou.onrender.com)"
             ),
             color=(
                 discord.Color.green()
