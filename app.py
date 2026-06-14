@@ -36,21 +36,15 @@ rate_limit_handler = RateLimitHandler()
 
 @bot.event
 async def on_ready():
-    try:
-        synced = await bot.tree.sync()
-        print(f"✅ {len(synced)} slash commands sincronizados!")
-    except Exception as e:
-        print(f"❌ Erro ao sincronizar slash commands: {e}")
-    
     print(f'✅ Logado como {bot.user}')
+
     # Status do bot
     await bot.change_presence(
-        status=discord.Status.idle,
-        activity=discord.Activity(
-            type=discord.ActivityType.watching,
-            name="pra você que quer programar: tenha medo do erro 429 do Discord."
+        activity=discord.CustomActivity(
+            name="teste"
         )
     )
+
     rate_limit_handler.reset()
 
 @bot.event
