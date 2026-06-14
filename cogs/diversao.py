@@ -683,65 +683,47 @@ class Diversao(commands.Cog):
         return False
 
     # ===== COMANDO TOMATE =====
-    @commands.command(name="tomate")
-    async def tomate_prefix(self, ctx):
-        """Lança um tomate em uma mensagem aleatória (prefixo)"""
-        if not ctx.author.guild_permissions.administrator:
-            last_used = cooldowns.get(ctx.author.id)
-
-            if last_used:
-                remaining = 1800 - (time.time() - last_used)
-
-                if remaining > 0:
-                    await ctx.send(
-                        f"⏳ espere {int(remaining)} segundos para usar novamente"
-                    )
-                    return
-
-            cooldowns[ctx.author.id] = time.time()
-
-        messages = [msg async for msg in ctx.channel.history(limit=6)]
-        messages = [msg for msg in messages if msg.id != ctx.message.id][:5]
-
-        if messages:
-            selected_msg = random.choice(messages)
-            try:
-                await selected_msg.add_reaction("🍅")
-            except Exception:
-                pass
-
-        await ctx.send("🍅 tomate lançado!")
-
     @app_commands.command(name="tomate", description="Lança um tomate em uma mensagem aleatória")
     async def tomate_slash(self, interaction: discord.Interaction):
-        """Lança um tomate em uma mensagem aleatória (slash)"""
         if not interaction.user.guild_permissions.administrator:
             last_used = cooldowns.get(interaction.user.id)
 
             if last_used:
                 remaining = 1800 - (time.time() - last_used)
 
-                if remaining > 0:
-                    await interaction.response.send_message(
-                        f"⏳ espere {int(remaining)} segundos para usar novamente",
-                        ephemeral=True
-                    )
-                    return
+            if remaining > 0:
+                await interaction.response.send_message(
+                    f"⏳ espere {int(remaining)} segundos para usar novamente",
+                    ephemeral=True
+                )
+                return
 
-            cooldowns[interaction.user.id] = time.time()
+        cooldowns[interaction.user.id] = time.time()
 
-        # Obter mensagens do canal
-        messages = [msg async for msg in interaction.channel.history(limit=6)]
-        
-        if messages:
-            selected_msg = random.choice(messages)
-            try:
-                await selected_msg.add_reaction("🍅")
-            except Exception:
-                pass
+    channel = interaction.channel
 
-        await interaction.response.send_message("🍅 tomate lançado!")
+    messages = [
+        msg async for msg in channel.history(limit=10)
+        if not msg.author.bot
+    ]
 
+    if not messages:
+        await interaction.response.send_message("🍅 não achei mensagem pra tacar tomate.")
+        return
+
+    selected_msg = random.choice(messages)
+
+    try:
+        await selected_msg.add_reaction("🍅")
+    except discord.Forbidden:
+        await interaction.response.send_message("❌ não tenho permissão pra reagir mensagens.")
+        return
+    except Exception as e:
+        await interaction.response.send_message(f"❌ erro ao lançar tomate: `{e}`")
+        return
+
+    await interaction.response.send_message("🍅 tomate lançado!")
+    
     # ===== COMANDO CONFISSÃO =====
     @app_commands.command(name="confissao", description="Envie uma confissão anônima")
     async def confissao(self, interaction: discord.Interaction):
