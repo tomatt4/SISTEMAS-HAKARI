@@ -161,8 +161,8 @@ class RespostaConfissaoModal(discord.ui.Modal):
                 inline=False
             )
             resposta_embed.add_field(
-                name="destinatário"
-                value=interaction.user.mention
+                name="destinatário",
+                value=interaction.user.mention,
                 inline=False
             )
             resposta_embed.set_footer(text="as confissões sempre são- pera aí, a água é azul porque o mar é azul ou é transparente porque a água de um copo é transparente🤔")
