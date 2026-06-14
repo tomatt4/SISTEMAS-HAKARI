@@ -160,11 +160,6 @@ class RespostaConfissaoModal(discord.ui.Modal):
                 value=self.resposta.value,
                 inline=False
             )
-            resposta_embed.add_field(
-                name="destinatário",
-                value=interaction.user.mention,
-                inline=False
-            )
             resposta_embed.set_footer(text="as confissões sempre são- pera aí, a água é azul porque o mar é azul ou é transparente porque a água de um copo é transparente🤔")
             resposta_embed.timestamp = discord.utils.utcnow()
             
@@ -429,6 +424,11 @@ class ConfissaoButtonsView(discord.ui.View):
             value=f"[clique aqui]({message.jump_url})",
             inline=False
         )
+        denuncia_embed.add_field(
+            name="destinatário",
+            value=interaction.user.mention,
+            inline=False
+        )
         denuncia_embed.timestamp = discord.utils.utcnow()
         
         # Mencionar cargo de moderação
@@ -443,7 +443,7 @@ class ConfissaoButtonsView(discord.ui.View):
         )
         
         await interaction.response.send_message(
-            "✅ denúncia enviada para a moderação",
+            "✅ denúncia enviada para a moderação.",
             ephemeral=True
         )
 
