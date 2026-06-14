@@ -185,8 +185,8 @@ def home():
 
 <body>
     <main class="card">
-        <h1>Status do Hakari</h1>
-        <p class="subtitle">Informações públicas da hospedagem e conexão do bot.</p>
+        <h1>Página de Host do Hakari</h1>
+        <p class="subtitle">Informações públicas da hospedagem e conexão do bot. Informações confidenciais como o TOKEN não serão exibidas aqui.</p>
 
         <section class="info">
             <span class="label">Status</span>
@@ -204,7 +204,7 @@ def home():
             <span class="label">Gateway Discord</span>
             <span class="value {gateway_class}">
                 {gateway_status}
-                <small class="ping">{gateway_ping if gateway_ping else "?"} ms</small>
+                <small class="ping">{gateway_ping if gateway_ping else "Indisponível"} ms</small>
             </span>
         </section>
 
@@ -220,11 +220,16 @@ def home():
         
         <section class="info">
             <span class="label">API Discord(ms)</span>
-            <span class="value"></span>
+            <span class="value">{latency} ms</span>
+        </section>
+
+        <section class="info">
+            <span class="label">Porta</span>
+            <span class="value">{port}</span>
         </section>
 
         <p class="footer">
-            Página de status pública do Hakari.
+            Página de status pública do Hakari | Bot feito pelo Salvador
         </p>
     </main>
 </body>
