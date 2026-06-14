@@ -45,8 +45,9 @@ async def on_ready():
     print(f'✅ Logado como {bot.user}')
 
     await bot.change_presence(
+        status=discord.Status.idle
         activity=discord.CustomActivity(
-            name="teste"
+            name="discord.gg/ccdv | VÃO LÁ DAR UMA PASSADA NO MELHOR SERVIDOR PORRA!"
         )
     )
 
