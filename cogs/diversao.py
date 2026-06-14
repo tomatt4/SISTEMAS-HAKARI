@@ -691,45 +691,39 @@ class Diversao(commands.Cog):
             if last_used:
                 remaining = 1800 - (time.time() - last_used)
 
-            if remaining > 0:
-                await interaction.response.send_message(
-                    f"⏳ espere {int(remaining)} segundos para usar novamente",
-                    ephemeral=True
-                )
-                return
+                if remaining > 0:
+                    await interaction.response.send_message(
+                        f"⏳ espere {int(remaining)} segundos para usar novamente",
+                        ephemeral=True
+                    )
+                    return
 
-                    cooldowns[interaction.user.id] = time.time()
+            cooldowns[interaction.user.id] = time.time()
 
-    channel = interaction.channel
+        channel = interaction.channel
 
-    messages = [
-        msg async for msg in channel.history(limit=10)
-        if not msg.author.bot
-    ]
+        messages = [
+            msg async for msg in channel.history(limit=10)
+            if not msg.author.bot
+        ]
 
-    if not messages:
-        await interaction.response.send_message("🍅 não achei mensagem pra tacar tomate.")
-        return
+        if not messages:
+            await interaction.response.send_message("🍅 não achei mensagem pra tacar tomate.")
+            return
+
+        selected_msg = random.choice(messages)
+
+        try:
+            await selected_msg.add_reaction("🍅")
+        except discord.Forbidden:
+            await interaction.response.send_message("❌ não tenho permissão pra reagir mensagens.")
+            return
+        except Exception as e:
+            await interaction.response.send_message(f"❌ erro ao lançar tomate: `{e}`")
+            return
+
+        await interaction.response.send_message("🍅 tomate lançado!")
         
-    selected_msg = random.choice(messages)
-
-    try:
-        await selected_msg.add_reaction("🍅")
-    except discord.Forbidden:
-        await interaction.response.send_message("❌ não tenho permissão pra reagir mensagens.")
-        return
-    except Exception as e:
-        await interaction.response.send_message(f"❌ erro ao lançar tomate: `{e}`")
-        return
-
-    await interaction.response.send_message("🍅 tomate lançado!")
-    
-    # ===== COMANDO CONFISSÃO =====
-    @app_commands.command(name="confissao", description="Envie uma confissão anônima")
-    async def confissao(self, interaction: discord.Interaction):
-        """Abre modal para confissão anônima (slash only)"""
-        await interaction.response.send_modal(ConfissaoModal())
-
     # ===== SISTEMA DE REPUTAÇÃO =====
     
     @commands.command(name="rep")
