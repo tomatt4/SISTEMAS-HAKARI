@@ -38,76 +38,193 @@ def home():
         gateway_class = "red"
 
     html = f"""
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Status do Hakari</title>
-        <style>
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Status do Hakari</title>
+
+    <style>
+        * {{
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }}
+
+        body {{
+            min-height: 100vh;
+            background:
+                radial-gradient(circle at top, #173d2d 0%, transparent 35%),
+                linear-gradient(135deg, #080808, #111111);
+            color: white;
+            font-family: Arial, Helvetica, sans-serif;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 25px;
+        }}
+
+        .card {{
+            width: 100%;
+            max-width: 620px;
+            background: rgba(27, 27, 27, 0.92);
+            border: 1px solid rgba(0, 255, 153, 0.25);
+            border-radius: 22px;
+            padding: 32px;
+            box-shadow: 0 0 35px rgba(0, 255, 153, 0.18);
+            backdrop-filter: blur(10px);
+            animation: fadeIn 0.7s ease;
+        }}
+
+        @keyframes fadeIn {{
+            from {{
+                opacity: 0;
+                transform: translateY(18px);
+            }}
+            to {{
+                opacity: 1;
+                transform: translateY(0);
+            }}
+        }}
+
+        h1 {{
+            font-size: clamp(1.8rem, 5vw, 2.5rem);
+            margin-bottom: 8px;
+            color: #00ff99;
+        }}
+
+        .subtitle {{
+            color: #aaa;
+            margin-bottom: 26px;
+            font-size: 0.95rem;
+        }}
+
+        .info {{
+            background: #222;
+            margin: 14px 0;
+            padding: 16px 18px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            transition: 0.25s ease;
+            border: 1px solid transparent;
+        }}
+
+        .info:hover {{
+            transform: translateY(-3px) scale(1.01);
+            border-color: rgba(0, 255, 153, 0.35);
+            background: #282828;
+            box-shadow: 0 8px 22px rgba(0, 255, 153, 0.12);
+        }}
+
+        .label {{
+            color: #ddd;
+            font-weight: bold;
+        }}
+
+        .value {{
+            text-align: right;
+            font-weight: 600;
+        }}
+
+        .ping {{
+            display: block;
+            font-size: 0.8rem;
+            color: #999;
+            margin-top: 3px;
+        }}
+
+        .green {{ color: #00ff99; }}
+        .yellow {{ color: #ffd500; }}
+        .red {{ color: #ff4d4d; }}
+        .gray {{ color: #aaa; }}
+
+        .status-dot {{
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            background: #00ff99;
+            border-radius: 50%;
+            margin-right: 7px;
+            box-shadow: 0 0 12px #00ff99;
+        }}
+
+        .footer {{
+            margin-top: 24px;
+            color: #888;
+            font-size: 0.9rem;
+            text-align: center;
+        }}
+
+        @media (max-width: 520px) {{
             body {{
-                background: #0f0f0f;
-                color: white;
-                font-family: Arial, sans-serif;
-                text-align: center;
-                padding: 40px;
+                padding: 16px;
+                align-items: flex-start;
+                padding-top: 35px;
             }}
 
             .card {{
-                background: #1b1b1b;
-                padding: 25px;
-                border-radius: 15px;
-                max-width: 500px;
-                margin: auto;
-                box-shadow: 0 0 20px #00ff9955;
+                padding: 24px 18px;
+                border-radius: 18px;
             }}
-
-            .green {{ color: #00ff99; }}
-            .yellow {{ color: #ffd500; }}
-            .red {{ color: #ff4d4d; }}
-            .gray {{ color: #aaa; }}
 
             .info {{
-                background: #252525;
-                margin: 12px 0;
-                padding: 12px;
-                border-radius: 10px;
+                flex-direction: column;
+                align-items: flex-start;
             }}
-        </style>
-    </head>
-    <body>
-        <div class="card">
-            <h1>Hakari Bot</h1>
 
-            <div class="info">
-                <strong>Status:</strong>
-                <span class="green">Online</span>
-            </div>
+            .value {{
+                text-align: left;
+            }}
+        }}
+    </style>
+</head>
 
-            <div class="info">
-                <strong>Uptime:</strong> {uptime}
-            </div>
+<body>
+    <main class="card">
+        <h1>Status do Hakari</h1>
+        <p class="subtitle">Informações públicas da hospedagem e conexão do bot.</p>
 
-            <div class="info">
-                <strong>Gateway Discord:</strong>
-                <span class="{gateway_class}">{gateway_status}</span>
-                <br>
-                <small>{gateway_ping if gateway_ping else "?"} ms</small>
-            </div>
+        <section class="info">
+            <span class="label">Status</span>
+            <span class="value green">
+                <span class="status-dot"></span>Online
+            </span>
+        </section>
 
-            <div class="info">
-                <strong>Hospedagem:</strong> Render
-            </div>
+        <section class="info">
+            <span class="label">Uptime</span>
+            <span class="value">{uptime}</span>
+        </section>
 
-            <div class="info">
-                <strong>Monitoramento 24/7:</strong> UptimeRobot
-            </div>
+        <section class="info">
+            <span class="label">Gateway Discord</span>
+            <span class="value {gateway_class}">
+                {gateway_status}
+                <small class="ping">{gateway_ping if gateway_ping else "?"} ms</small>
+            </span>
+        </section>
 
-            <p style="color:#888;">
-                Página de status pública do bot.
-            </p>
-        </div>
-    </body>
-    </html>
-    """
+        <section class="info">
+            <span class="label">Hospedagem</span>
+            <span class="value">Render</span>
+        </section>
+
+        <section class="info">
+            <span class="label">Monitoramento 24/7</span>
+            <span class="value">UptimeRobot</span>
+        </section>
+
+        <p class="footer">
+            Página de status pública do Hakari.
+        </p>
+    </main>
+</body>
+</html>
+"""
 
     return render_template_string(html)
 
