@@ -217,6 +217,11 @@ def home():
             <span class="label">Monitoramento 24/7</span>
             <span class="value">UptimeRobot</span>
         </section>
+        
+        <section class="info">
+            <span class="label">API Discord(ms)</span>
+            <span class="value"></span>
+        </section>
 
         <p class="footer">
             Página de status pública do Hakari.
