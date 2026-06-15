@@ -5,7 +5,28 @@ from discord import app_commands
 from keep_alive import keep_alive
 import asyncio
 from discord.errors import HTTPException
+import random
+from discord.ext import tasks
 
+status_list = [
+    "dis.gg/ccdv | /help",
+    "hakari v2.3.17",
+    "feito por salvador",
+    "marrocos 1 a 1 brasil kkkkkkkkkkkkkkkkkkkkj",
+    "alemanha 7 a 1 em curaçao ☠️☠️☠️",
+    "meu prefixo é uma virgula ok",
+    "six seven da silva bora bill",
+    "pô man, as vezes cansa ser bot",
+    "eu fico 24/7 com o uptime robot toda hora falando BORA TRABALHAR no meu http de monitoramento sabia",
+    "NÃO, ERRO 429 DE NOVO NÃO POR FAVOR DEUS😭😭😭😭😭😭😭😭😭",
+    "porra um dia eu fui apagado por inteiro porque o salva quis mudar de python pra javascript, que merda em"
+]
+
+@tasks.loop(minutes=8)
+async def trocar_status():
+    await bot.change_presence(status=discord.Status.idle, activity=discord.CustomActivity(name=random.choice(status_list)))
+    
+        
 TOKEN = os.getenv("TOKEN")
 
 intents = discord.Intents.all()
@@ -31,7 +52,7 @@ class RateLimitHandler:
     
     def reset(self):
         self.retry_count = 0
-
+        
 rate_limit_handler = RateLimitHandler()
 
 @bot.event
@@ -43,14 +64,10 @@ async def on_ready():
         print(f"❌ erro ao sincronizar slash commands: {e}")
 
     print(f'✅ Logado como {bot.user}')
-
-    await bot.change_presence(
-        status=discord.Status.idle,
-        activity=discord.CustomActivity(
-            name="discord.gg/ccdv | VÃO LÁ DAR UMA PASSADA NO MELHOR SERVIDOR PORRA!"
-        )
-    )
-
+    
+    if not trocar_status.is_running():
+            trocar_status.start()
+        
     rate_limit_handler.reset()
 
 @bot.event
