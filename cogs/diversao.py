@@ -136,7 +136,7 @@ class RespostaConfissaoModal(discord.ui.Modal):
         
         if not confissoes_channel:
             await interaction.response.send_message(
-                f"❌ erro ao enviar resposta: ``{e}``, COPIA ESSE AVISO E FALA COM O SALVA PELO AMOR DE DEUS",
+                "❌ canal de confissões não encontrado. avisa o Salva.",
                 ephemeral=True
             )
             return
