@@ -956,7 +956,5 @@ class Diversao(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Diversao(bot))
-    
-print("Comandos na tree:")
-for cmd in bot.tree.get_commands():
-    print(cmd.name)
+    print("✅ Cog Diversao carregado")
+    print("Comandos na tree:", [cmd.name for cmd in bot.tree.get_commands()])
