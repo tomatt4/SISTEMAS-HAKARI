@@ -136,7 +136,7 @@ class RespostaConfissaoModal(discord.ui.Modal):
         
         if not confissoes_channel:
             await interaction.response.send_message(
-                "❌ canal de confissões não encontrado. avisa o Salva.",
+                "❌ canal de confissões não encontrado. Avisa o Salva.",
                 ephemeral=True
             )
             return
@@ -432,7 +432,7 @@ class ConfissaoButtonsView(discord.ui.View):
         denuncia_embed.timestamp = discord.utils.utcnow()
         
         # Mencionar cargo de moderação
-        role = interaction.guild.get_role(MODERACAO_ROLE_ID)
+        role = interaction.guild.get_role(MODERACAO_ROLE_ID) if interaction.guild else None
         role_mention = role.mention if role else f"<@&{MODERACAO_ROLE_ID}>"
         
         # Enviar denúncia
@@ -591,9 +591,9 @@ class Diversao(commands.Cog):
         self.bot = bot
         self.reputation_data = self.load_reputation_data()
         self.cooldown_data = self.load_cooldown_data()
-        # Restaurar views persistentes
-        bot.add_view(ConfissaoButtonsView(bot))
-        bot.add_view(ModeracaoView(bot, 0))
+        # Restaurar views persistentes dos botões
+        self.bot.add_view(ConfissaoButtonsView(self.bot))
+        # A ModeracaoView precisa do ID da mensagem da confissão, então ela é criada na hora da denúncia.
     
     def load_reputation_data(self):
         """Carrega os dados de reputação do arquivo JSON"""
@@ -681,6 +681,12 @@ class Diversao(commands.Cog):
             if role.id in SPECIAL_ROLE_IDS:
                 return True
         return False
+
+    # ===== COMANDO CONFISSÃO =====
+    @app_commands.command(name="confissao", description="Envie uma confissão anônima")
+    async def confissao_slash(self, interaction: discord.Interaction):
+        """Abre o modal de confissão anônima."""
+        await interaction.response.send_modal(ConfissaoModal())
 
     # ===== COMANDO TOMATE =====
     @app_commands.command(name="tomate", description="Lança um tomate em uma mensagem aleatória")
@@ -956,5 +962,7 @@ class Diversao(commands.Cog):
 
 async def setup(bot):
     await bot.add_cog(Diversao(bot))
-    print("✅ Cog Diversao carregado")
-    print("Comandos na tree:", [cmd.name for cmd in bot.tree.get_commands()])
+
+    comandos = [cmd.name for cmd in bot.tree.get_commands()]
+    print("✅ Cog cogs.diversao carregado.")
+    print("Comandos na Tree:", ", ".join(comandos) if comandos else "nenhum comando na tree")
