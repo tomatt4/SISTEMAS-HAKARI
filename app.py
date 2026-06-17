@@ -19,7 +19,8 @@ status_list = [
     "pô man, as vezes cansa ser bot",
     "eu fico 24/7 com o uptime robot toda hora falando BORA TRABALHAR no meu http de monitoramento sabia",
     "NÃO, ERRO 429 DE NOVO NÃO POR FAVOR DEUS😭😭😭😭😭😭😭😭😭",
-    "porra um dia eu fui apagado por inteiro porque o salva quis mudar de python pra javascript, que merda em"
+    "porra um dia eu fui apagado por inteiro porque o salva quis mudar de python pra javascript, que merda em",
+    "o Hakari AI#3371 é meu sósia com ia embutido kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
 ]
 
 @tasks.loop(minutes=1)
