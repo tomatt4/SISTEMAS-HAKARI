@@ -160,7 +160,7 @@ class RespostaConfissaoModal(discord.ui.Modal):
                 value=self.resposta.value,
                 inline=False
             )
-            resposta_embed.set_footer(text="as confissões sempre são- pera aí, a água é azul porque o mar é azul ou é transparente porque a água de um copo é transparente🤔")
+            resposta_embed.set_footer(text="as confissões sempre são anonimas ne burrao")
             resposta_embed.timestamp = discord.utils.utcnow()
             
             # Enviar a resposta no canal
