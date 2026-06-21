@@ -10,7 +10,7 @@ from discord.ext import tasks
 
 status_list = [
     "dis.gg/ccdv | /help",
-    "hakari v2.3.17",
+    "hakari versão 2.4.0",
     "feito por salvador",
     "marrocos 1 a 1 brasil kkkkkkkkkkkkkkkkkkkkj",
     "alemanha 7 a 1 em curaçao ☠️☠️☠️",
@@ -20,7 +20,7 @@ status_list = [
     "eu fico 24/7 com o uptime robot toda hora falando BORA TRABALHAR no meu http de monitoramento sabia",
     "NÃO, ERRO 429 DE NOVO NÃO POR FAVOR DEUS😭😭😭😭😭😭😭😭😭",
     "porra um dia eu fui apagado por inteiro porque o salva quis mudar de python pra javascript, que merda em",
-    "o Hakari AI#3371 é meu sósia com ia embutido kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkk"
+    "BRASIL 3 A 0 HAITI PORRAAAAAAAAAAAAAAAAAAA VAI TOMAR NO CUUUUUUUUDWKIODJWUEIDÇYEBFUYHEGBYTFDVGTF"
 ]
 
 @tasks.loop(minutes=1)
