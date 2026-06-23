@@ -18,27 +18,27 @@ class StaffPromotion(commands.Cog):
             1490679537032495301: {
                 "next_role": 1490679537032495298,
                 "points_needed": 25,
-                "role_name": "Staff Iniciante"
+                "role_name": "ೀ Helpers"
             },
             1490679537032495298: {
                 "next_role": 1490679537032495302,
                 "points_needed": 35,
-                "role_name": "Staff Intermediário"
+                "role_name": "ೀ Supervisão"
             },
             1490679537032495302: {
                 "next_role": 1518394774414037042,
                 "points_needed": 45,
-                "role_name": "Staff Avançado"
+                "role_name": "ೀ Direção"
             },
             1518394774414037042: {
                 "next_role": 1490679537032495303,
                 "points_needed": 55,
-                "role_name": "Moderador"
+                "role_name": "ೀ Administração"
             },
             1490679537032495303: {
                 "next_role": None,
                 "points_needed": None,
-                "role_name": "Administrador",
+                "role_name": "Gestão ⋆⭒˚.⋆",
                 "is_final": True
             }
         }
@@ -124,7 +124,7 @@ class StaffPromotion(commands.Cog):
     )
     @app_commands.describe(
         staff="O staff que receberá os pontos",
-        quantia="Quantidade de pontos (positivo para adicionar, negativo para remover)"
+        quantia="Quantidade de pontos (positivo para adicionar, negativo para remover, exemplo: -15, +15)"
     )
     async def add_points_command(
         self,
@@ -137,7 +137,7 @@ class StaffPromotion(commands.Cog):
         # Verificação de permissões - apenas líderes/admins podem usar
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                "❌ Você não tem permissão para usar este comando!",
+                "❌ você não tem permissão para usar este comando",
                 ephemeral=True
             )
             return
@@ -145,7 +145,7 @@ class StaffPromotion(commands.Cog):
         # Verifica se o staff tem cargo staff
         if self.get_highest_staff_role(staff) is None:
             await interaction.response.send_message(
-                f"❌ {staff.mention} não possui um cargo de staff!",
+                f"❌ {staff.mention} não possui um cargo de staff",
                 ephemeral=True
             )
             return
@@ -162,23 +162,23 @@ class StaffPromotion(commands.Cog):
             role_name = self.promotion_chains[current_role]["role_name"]
             
             embed = discord.Embed(
-                title="🎉 Promoção de Staff!",
+                title="🎉 promoção de staff!",
                 description=f"{staff.mention} foi promovido para **{role_name}**!",
                 color=discord.Color.gold()
             )
-            embed.add_field(name="Pontos Anteriores", value=f"{new_points - quantia}", inline=False)
-            embed.add_field(name="Pontos Atuais", value="0", inline=False)
+            embed.add_field(name="pontos Anteriores", value=f"{new_points - quantia}", inline=False)
+            embed.add_field(name="pontos Atuais", value="0", inline=False)
             embed.set_thumbnail(url=staff.display_avatar.url)
             
             await interaction.response.send_message(embed=embed)
         else:
             embed = discord.Embed(
-                title="📊 Pontos Atualizados",
-                description=f"Pontos de {staff.mention} foram atualizados!",
+                title="📊 pontos atualizados",
+                description=f"pontos de {staff.mention} foram atualizados!",
                 color=discord.Color.blue()
             )
-            embed.add_field(name="Operação", value=f"+{quantia}" if quantia > 0 else f"{quantia}", inline=False)
-            embed.add_field(name="Pontos Totais", value=f"{new_points}", inline=False)
+            embed.add_field(name="operação", value=f"+{quantia}" if quantia > 0 else f"{quantia}", inline=False)
+            embed.add_field(name="pontos totais", value=f"{new_points}", inline=False)
             
             # Mostra progresso para a próxima promoção
             current_role_id = self.get_highest_staff_role(staff)
@@ -195,7 +195,7 @@ class StaffPromotion(commands.Cog):
                 else:
                     embed.add_field(
                         name="Status",
-                        value="⭐ Cargo máximo atingido!",
+                        value="⭐ cargo máximo atingido! agora que chegou na gestão do servidor, você só sobe de cargo por mérito da dona(decisão da dona do servidor)",
                         inline=False
                     )
             
@@ -219,7 +219,7 @@ class StaffPromotion(commands.Cog):
         current_role_id = self.get_highest_staff_role(target)
         if current_role_id is None:
             await interaction.response.send_message(
-                f"❌ {target.mention} não possui um cargo de staff!",
+                f"❌ {target.mention} não possui um cargo de staff",
                 ephemeral=True
             )
             return
@@ -229,11 +229,11 @@ class StaffPromotion(commands.Cog):
         role_name = promotion_info["role_name"]
 
         embed = discord.Embed(
-            title=f"📊 Pontos de {target.name}",
+            title=f"📊 pontos de {target.name}",
             color=discord.Color.blue()
         )
-        embed.add_field(name="Cargo Atual", value=role_name, inline=False)
-        embed.add_field(name="Pontos Totais", value=str(points), inline=False)
+        embed.add_field(name="cargo Atual", value=role_name, inline=False)
+        embed.add_field(name="pontos Totais", value=str(points), inline=False)
 
         if not promotion_info.get("is_final"):
             next_role_name = self.promotion_chains[promotion_info["next_role"]]["role_name"]
@@ -241,7 +241,7 @@ class StaffPromotion(commands.Cog):
             progress = min(points, points_needed)
             
             embed.add_field(
-                name="Próxima Promoção",
+                name="próxima promoção",
                 value=f"{next_role_name}: {progress}/{points_needed} pontos",
                 inline=False
             )
@@ -250,11 +250,11 @@ class StaffPromotion(commands.Cog):
             bar_length = 10
             filled = int((progress / points_needed) * bar_length)
             bar = "█" * filled + "░" * (bar_length - filled)
-            embed.add_field(name="Progresso", value=f"`{bar}`", inline=False)
+            embed.add_field(name="progresso", value=f"`{bar}`", inline=False)
         else:
             embed.add_field(
-                name="Status",
-                value="⭐ Cargo máximo atingido!",
+                name="status",
+                value="⭐ cargo máximo atingido!",
                 inline=False
             )
 
@@ -263,9 +263,9 @@ class StaffPromotion(commands.Cog):
 
     @app_commands.command(
         name="resetar_pontos",
-        description="Reseta os pontos de um staff"
+        description="reseta os pontos de um staff"
     )
-    @app_commands.describe(staff="O staff que terá seus pontos resetados")
+    @app_commands.describe(staff="o staff que terá seus pontos resetados")
     async def reset_points_command(
         self,
         interaction: discord.Interaction,
@@ -275,7 +275,7 @@ class StaffPromotion(commands.Cog):
         
         if not interaction.user.guild_permissions.administrator:
             await interaction.response.send_message(
-                "❌ Você não tem permissão para usar este comando!",
+                "❌ você não tem permissão para usar este comando!",
                 ephemeral=True
             )
             return
@@ -283,8 +283,8 @@ class StaffPromotion(commands.Cog):
         self.set_user_points(staff.id, 0)
 
         embed = discord.Embed(
-            title="🔄 Pontos Resetados",
-            description=f"Os pontos de {staff.mention} foram resetados para 0!",
+            title="🔄 pontos resetados",
+            description=f"os pontos de {staff.mention} foram resetados para 0!",
             color=discord.Color.red()
         )
         await interaction.response.send_message(embed=embed)
