@@ -16,11 +16,12 @@ class StaffPromotion(commands.Cog):
         # Configuração de cargos e pontos necessários
         self.promotion_chains = {
             1490679537032495298: {
-            "next_role": 1490679537032495298,
+                "next_role": 1490679537032495298,
                 "points_needed": 20,
                 "role_name": "ೀ Supervisor"
             },
-           "next_role": 1490679537032495298,
+            1490679537032495301: {
+                "next_role": 1490679537032495301,
                 "points_needed": 25,
                 "role_name": "ೀ Staffs"
             },
@@ -46,7 +47,7 @@ class StaffPromotion(commands.Cog):
             },
             1518394774414037042: {
                 "next_role": 1490679537032495303,
-                "points_needed": 55,
+                "points_needed": 50,
                 "role_name": "ೀ Administrador"
             },
             1490679537032495303: {
