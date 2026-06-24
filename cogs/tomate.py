@@ -119,7 +119,40 @@ async def tomate_core(channel, author, send):
 class Tomate(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        
+    @commands.Cog.listener()
+    async def on_raw_reaction_add(self, payload: discord.RawReactionActionEvent):
+        if str(payload.emoji) != "🍅":
+            return
 
+        if payload.user_id == self.bot.user.id:
+            return
+
+        channel = self.bot.get_channel(payload.channel_id)
+        if channel is None:
+            return
+
+        try:
+            message = await channel.fetch_message(payload.message_id)
+        except:
+            return
+
+        if message.author.id != self.bot.user.id:
+            return
+
+        try:
+            user = await self.bot.fetch_user(payload.user_id)
+
+            await message.remove_reaction(payload.emoji, user)
+
+            await channel.send(
+                f"{user.mention} ê parceiro tira esse tomate de mim rei da cocada preta, só **EU** posso tacar tomates por aqui."
+            )
+
+        except discord.Forbidden:
+            await channel.send(
+                "CADÊ MINHA PERMISSÃO DE TIRAR REAÇÃO PORRAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+            )
     # Slash Command
     @app_commands.command(
         name="tomate",
