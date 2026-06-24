@@ -3,6 +3,8 @@ from discord.ext import commands
 from discord import app_commands
 import random
 import time
+import json
+import os
 
 cooldowns = {}
 
