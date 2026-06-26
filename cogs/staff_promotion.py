@@ -15,35 +15,30 @@ class StaffPromotion(commands.Cog):
         
         # Configuração de cargos e pontos necessários
         self.promotion_chains = {
-            1490679537032495298: {
-                "next_role": 1490679537032495298,
-                "points_needed": 20,
-                "role_name": "SUPERVISOR"
-            },
             1490679537032495301: {
                 "next_role": 1490679537032495301,
-                "points_needed": 25,
-                "role_name": "STAFF"
+                "points_needed": 20,
+                "role_name": "Staff"
             },
             1490679537032495298: {
                 "next_role": 1490679537032495302,
                 "points_needed": 30,
-                "role_name": "MODERADOR"
+                "role_name": "Moderador"
             },
-            1519102243599683805:{
-                "next_role": 1519102243599683805,
-                "points_needed": 35,
-                "role_name": "SECRETÁRIO"
-            },
-            1490679537032495302: {
-                "next_role": 1518394774414037042,
-                "points_needed": 40,
-                "role_name": "DIRETOR"
+            1490679537032495298: {
+                "next_role": 1490679537032495298,
+                "points_needed": 25,
+                "role_name": "Supervisor"
             },
             1519102475246899341: {
                 "next_role": 1519102475246899341,
                 "points_needed": 45,
-                "role_name": "COORDENADOR"
+                "role_name": "Coordenador"
+            },
+            1490679537032495302: {
+                "next_role": 1518394774414037042,
+                "points_needed": 40,
+                "role_name": "Diretor"
             },
             1518394774414037042: {
                 "next_role": 1490679537032495303,
@@ -52,7 +47,7 @@ class StaffPromotion(commands.Cog):
             },
             1490679537032495303: {
                 "next_role": None,
-                "points_needed": 60,
+                "points_needed": None,
                 "role_name": "GESTOR",
                 "is_final": True
             }
