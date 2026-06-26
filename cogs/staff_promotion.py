@@ -18,42 +18,42 @@ class StaffPromotion(commands.Cog):
             1490679537032495298: {
                 "next_role": 1490679537032495298,
                 "points_needed": 20,
-                "role_name": "ೀ Supervisor"
+                "role_name": "SUPERVISOR"
             },
             1490679537032495301: {
                 "next_role": 1490679537032495301,
                 "points_needed": 25,
-                "role_name": "ೀ Staffs"
+                "role_name": "STAFF"
             },
             1490679537032495298: {
                 "next_role": 1490679537032495302,
                 "points_needed": 30,
-                "role_name": "ೀ Moderador"
+                "role_name": "MODERADOR"
             },
             1519102243599683805:{
                 "next_role": 1519102243599683805,
                 "points_needed": 35,
-                "role_name": "ೀ Secretário"
+                "role_name": "SECRETÁRIO"
             },
             1490679537032495302: {
                 "next_role": 1518394774414037042,
                 "points_needed": 40,
-                "role_name": "ೀ Diretor"
+                "role_name": "DIRETOR"
             },
             1519102475246899341: {
                 "next_role": 1519102475246899341,
                 "points_needed": 45,
-                "role_name": "ೀ Coordenador"
+                "role_name": "COORDENADOR"
             },
             1518394774414037042: {
                 "next_role": 1490679537032495303,
                 "points_needed": 50,
-                "role_name": "ೀ Administrador"
+                "role_name": "ADMINISTRADOR"
             },
             1490679537032495303: {
                 "next_role": None,
                 "points_needed": 60,
-                "role_name": "Gestão ⋆⭒˚.⋆",
+                "role_name": "GESTOR",
                 "is_final": True
             }
         }
