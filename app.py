@@ -23,9 +23,15 @@ status_list = [
     "BRASIL 3 A 0 HAITI PORRAAAAAAAAAAAAAAAAAAA VAI TOMAR NO CUUUUUUUUDWKIODJWUEIDÇYEBFUYHEGBYTFDVGTF"
 ]
 
-@tasks.loop(minutes=1)
+discord_status_list = [
+   "discord.Status.idle",
+   "discord.Status.dnd",
+   "discord.Status.online"
+]
+
+@tasks.loop(seconds=40)
 async def trocar_status():
-    await bot.change_presence(status=discord.Status.idle, activity=discord.CustomActivity(name=random.choice(status_list)))
+    await bot.change_presence(status=(random.choice(discord_status_list)), activity=discord.CustomActivity(name=random.choice(status_list)))
     
         
 TOKEN = os.getenv("TOKEN")
@@ -35,7 +41,7 @@ intents = discord.Intents.all()
 # Bot com suporte a prefixo e slash commands
 bot = commands.Bot(command_prefix=",", intents=intents)
 
-# Sistema anti-spam (erro 529)
+# Sistema anti-spam (erro 429)
 class RateLimitHandler:
     def __init__(self):
         self.retry_count = 0
