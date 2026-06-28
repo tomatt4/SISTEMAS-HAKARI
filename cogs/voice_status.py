@@ -1,7 +1,7 @@
 import discord
 from discord.ext import commands, tasks
 
-VOICE_CHANNEL_ID = 1512845054450991115
+VOICE_CHANNEL_ID = 1520828048075788308
 
 class VoiceStatus(commands.Cog):
     def __init__(self, bot):
