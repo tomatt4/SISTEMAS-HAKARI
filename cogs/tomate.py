@@ -6,6 +6,9 @@ import time
 
 cooldowns = {}
 
+bloquear_tomates = False
+bot_owner_id_cache = None
+
 STAFF_ROLES = {
     1500969290093039626,  # Gerente
     1513653295061798922   # Staff
@@ -21,7 +24,6 @@ REDUCED_COOLDOWN_ROLES = {
     1490679537032495299,
     1514687383474405588,
     1490679537032495295,
-    1520584569735086150,
     *TARGET_PICK_ROLES
 }
 
@@ -51,7 +53,22 @@ def get_cooldown(member: discord.Member):
     return DEFAULT_COOLDOWN
 
 
-async def tomate_core(channel, author, send, target_user: discord.Member | None = None):
+async def is_bot_owner(bot: commands.Bot, user_id: int):
+    global bot_owner_id_cache
+
+    if bot_owner_id_cache is None:
+        app = await bot.application_info()
+        bot_owner_id_cache = app.owner.id
+
+    return user_id == bot_owner_id_cache
+
+
+async def tomate_core(
+    channel,
+    author: discord.Member,
+    send,
+    target_user: discord.Member | None = None
+):
 
     cooldown_time = get_cooldown(author)
 
@@ -66,16 +83,15 @@ async def tomate_core(channel, author, send, target_user: discord.Member | None 
                 seconds = int(remaining % 60)
 
                 await send(
-                    f"⏳ cooldown ativo. espere **{minutes}m {seconds}s**"
+                    f"⏳ cooldown ativo. Espera **{minutes}m {seconds}s**"
                 )
                 return
 
         cooldowns[author.id] = time.time()
 
-    # Se escolheu alvo
     if target_user is not None:
         if not can_pick_target(author):
-            await send("tu não tem cargo pra escolher alvo do tomate doidão")
+            await send("tu não tem cargo pra escolher alvo do tomate 😭")
             return
 
         messages = [
@@ -84,13 +100,14 @@ async def tomate_core(channel, author, send, target_user: discord.Member | None 
         ]
 
         if not messages:
-            await send(f"não achei mensagem recente pra tacar tomate")
+            await send(
+                f"não achei mensagem recente de {target_user.mention} pra tacar tomate"
+            )
             return
 
         selected_msg = random.choice(messages)
         target = selected_msg.author
 
-    # Alvo aleatório
     else:
         messages = [
             msg async for msg in channel.history(limit=5)
@@ -182,6 +199,23 @@ class Tomate(commands.Cog):
         except:
             return
 
+        guild = self.bot.get_guild(payload.guild_id)
+
+        if bloquear_tomates and guild is not None:
+            bot_owner = await is_bot_owner(self.bot, message.author.id)
+            server_owner = message.author.id == guild.owner_id
+
+            if bot_owner or server_owner:
+                try:
+                    user = await self.bot.fetch_user(payload.user_id)
+                    await message.remove_reaction(payload.emoji, user)
+                except discord.Forbidden:
+                    pass
+                except Exception:
+                    pass
+
+                return
+
         if message.author.id != self.bot.user.id:
             return
 
@@ -191,7 +225,7 @@ class Tomate(commands.Cog):
             await message.remove_reaction(payload.emoji, user)
 
             await channel.send(
-                f"sub 5 {user.mention} tentando tacar tomate no true mogger 🤣"
+                f"E RAPÁ {user.mention} TÁ ACHANDO QUE TU É O REI DA COCADA PRETA É? pode tirando esse tomte aí de mim bestão, só **EU** posso tacar tomates por aqui."
             )
 
         except discord.Forbidden:
@@ -243,6 +277,44 @@ class Tomate(commands.Cog):
             ctx.author,
             send,
             alvo
+        )
+
+    @app_commands.command(
+        name="bloquear_tomates",
+        description="Bloqueia tomates nas mensagens do dono do servidor e do dono do bot"
+    )
+    async def bloquear_tomates_slash(
+        self,
+        interaction: discord.Interaction
+    ):
+        global bloquear_tomates
+
+        guild = interaction.guild
+
+        if guild is None:
+            await interaction.response.send_message(
+                "esse comando só funciona em servidores.",
+                ephemeral=True
+            )
+            return
+
+        is_server_owner = interaction.user.id == guild.owner_id
+        is_application_owner = await is_bot_owner(self.bot, interaction.user.id)
+
+        if not is_server_owner and not is_application_owner:
+            await interaction.response.send_message(
+                "só o dono do servidor ou o dono do bot podem usar este comando.",
+                ephemeral=True
+            )
+            return
+
+        bloquear_tomates = not bloquear_tomates
+
+        status = "ativado" if bloquear_tomates else "desativado"
+
+        await interaction.response.send_message(
+            f"🍅 bloqueio de tomates **{status}**",
+            ephemeral=True
         )
 
 
