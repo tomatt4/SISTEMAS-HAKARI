@@ -19,37 +19,37 @@ class StaffPromotion(commands.Cog):
         self.promotion_chains = {
             1490679537032495301: {
                 "next_role": 1519102905112858757,
-                "points_needed": 0,
+                "points_needed": 10
                 "role_name": "Staff"
             },
             1519102905112858757: {
                 "next_role": 1490679537032495298,
-                "points_needed": 10,
+                "points_needed": 20,
                 "role_name": "Moderador"
             },
             1490679537032495298: {
                 "next_role": 1519102475246899341,
-                "points_needed": 20,
+                "points_needed": 30,
                 "role_name": "Supervisor"
             },
             1519102475246899341: {
-                "next_role": 1490679537032495302,
-                "points_needed": 30,
+                "next_role": 1518394774414037042,
+                "points_needed": 40,
                 "role_name": "Diretor"
             },
-            1490679537032495302: {
+            1518394774414037042: {
                 "next_role": 1490679537032495303,
-                "points_needed": 40,
+                "points_needed": 50,
                 "role_name": "Administrador"
             },
             1490679537032495303: {
                 "next_role": 1496282936331337789,
-                "points_needed": 50,
+                "points_needed": 60,
                 "role_name": "Gestor"
             },
             1496282936331337789: {
                 "next_role": None,
-                "points_needed": 60,
+                "points_needed": 70,
                 "role_name": "Sub Owner",
                 "is_final": True
             }
