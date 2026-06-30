@@ -19,7 +19,7 @@ class StaffPromotion(commands.Cog):
         self.promotion_chains = {
             1490679537032495301: {
                 "next_role": 1519102905112858757,
-                "points_needed": 10
+                "points_needed": 10,
                 "role_name": "Staff"
             },
             1519102905112858757: {
