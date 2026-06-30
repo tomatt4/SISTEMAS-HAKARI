@@ -16,43 +16,42 @@ class StaffPromotion(commands.Cog):
         # Configuração de cargos e pontos necessários
         self.promotion_chains = {
             1490679537032495301: {
-                "next_role": 1490679537032495301,
-                "points_needed": 20,
+                "next_role": 11519102905112858757,
+                "points_needed": 0,
                 "role_name": "Staff"
             },
-            1490679537032495298: {
-                "next_role": 1490679537032495302,
-                "points_needed": 30,
+            1519102905112858757: {
+                "next_role": 1490679537032495298,
+                "points_needed": 10,
                 "role_name": "Moderador"
             },
             1490679537032495298: {
-                "next_role": 1490679537032495298,
-                "points_needed": 25,
+                "next_role": 1519102475246899341,
+                "points_needed": 20,
                 "role_name": "Supervisor"
             },
             1519102475246899341: {
-                "next_role": 1519102475246899341,
-                "points_needed": 45,
-                "role_name": "Coordenador"
-            },
-            1490679537032495302: {
-                "next_role": 1518394774414037042,
-                "points_needed": 40,
+                "next_role": 1490679537032495302,
+                "points_needed": 30,
                 "role_name": "Diretor"
             },
-            1518394774414037042: {
+            1490679537032495302: {
                 "next_role": 1490679537032495303,
-                "points_needed": 50,
-                "role_name": "ADMINISTRADOR"
+                "points_needed": 40,
+                "role_name": "Administrador"
             },
             1490679537032495303: {
+                "next_role": 1496282936331337789,
+                "points_needed": 50,
+                "role_name": "Gestor"
+            },
+            1496282936331337789: {
                 "next_role": None,
-                "points_needed": None,
-                "role_name": "GESTOR",
+                "points_needed": 60,
+                "role_name": "Sub Owner",
                 "is_final": True
             }
         }
-
     def load_data(self):
         """Carrega os dados de pontos do arquivo JSON"""
         if os.path.exists(self.data_file):
