@@ -11,37 +11,35 @@ class VoiceStatus(commands.Cog):
     def cog_unload(self):
         self.keep_voice.cancel()
 
-    @tasks.loop(seconds=15)
+    @tasks.loop(minutes=2)
     async def keep_voice(self):
         channel = self.bot.get_channel(VOICE_CHANNEL_ID)
 
-        if channel is None:
-            print("Canal não encontrado. ID errado ou bot não vê o canal.")
-            return
-
         if not isinstance(channel, discord.VoiceChannel):
-            print(f"Esse ID não é canal de voz. Tipo encontrado: {type(channel)}")
+            print("Canal de voz não encontrado ou ID inválido.")
             return
 
         guild = channel.guild
         vc = guild.voice_client
 
         try:
-            if vc is None:
-                print(f"Tentando conectar em: {channel.name}")
-                await channel.connect(self_deaf=True)
-                print("Conectado com sucesso.")
+            if vc is None or not vc.is_connected():
+                print(f"[VOICE] Conectando em {channel.name}")
+                await channel.connect(self_deaf=True, reconnect=True, timeout=30)
+                return
 
-            elif vc.channel.id != VOICE_CHANNEL_ID:
-                print(f"Movendo para: {channel.name}")
+            if vc.channel and vc.channel.id != VOICE_CHANNEL_ID:
+                print(f"[VOICE] Movendo para {channel.name}")
                 await vc.move_to(channel)
 
-        except discord.Forbidden:
-            print("Sem permissão pra conectar nesse canal.")
         except discord.ClientException as e:
-            print(f"Erro do client: {e}")
+            print(f"[VOICE] ClientException: {e}")
+
+        except discord.Forbidden:
+            print("[VOICE] Sem permissão pra conectar.")
+
         except Exception as e:
-            print(f"Erro desconhecido: {type(e).__name__}: {e}")
+            print(f"[VOICE] Erro: {type(e).__name__}: {e}")
 
     @keep_voice.before_loop
     async def before_keep_voice(self):
