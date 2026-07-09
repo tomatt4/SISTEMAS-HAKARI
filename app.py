@@ -101,28 +101,28 @@ async def on_error(event, *args, **kwargs):
 async def load_cogs():
     """Carrega todos os cogs da pasta ./cogs"""
     cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
+
     if not os.path.isdir(cogs_dir):
-        print("⚠️ Diretório ./cogs não existe. Nenhuma cog será carregada.")
+        print("⚠️ Diretório ./cogs não existe.")
         return
 
     for filename in os.listdir(cogs_dir):
         if filename.endswith(".py"):
             cog_name = f"cogs.{filename[:-3]}"
+
             try:
-                # Tenta descarregar em caso de reload
                 try:
-                   await bot.unload_extension(cog_name)
+                    await bot.unload_extension(cog_name)
                 except commands.ExtensionNotLoaded:
                     pass
                 except Exception as e:
-                    # Outros problemas ao descarregar não bloqueiam o carregamento
                     print(f"⚠️ Ao descarregar {cog_name}: {e}")
-                
-                # Carrega a cog (métodos síncronos na API de extensões)
-               await bot.load_extension(cog_name)
+
+                await bot.load_extension(cog_name)
                 print(f"✅ Cog carregada: {cog_name}")
+
             except Exception as e:
-                print(f"❌ Erro ao carregar cog {cog_name}: {e}")
+                print(f"❌ Erro ao carregar {cog_name}: {e}")
 
 async def main():
     if not TOKEN:
