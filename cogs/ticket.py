@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-TICKET_IMAGE = "https://i.postimg.cc/Yq94ZgY0/download-(3).gif"
+TICKET_IMAGE = "https://i.postimg.cc/sgJg2gYD/image.jpg"
 SUPPORT_ROLE_ID = 1504998108407398501
 
 
