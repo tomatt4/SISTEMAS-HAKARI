@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-TICKET_IMAGE = "https://i.postimg.cc/ZRptsfK0/download-(2).gif"
+TICKET_IMAGE = "https://i.postimg.cc/Yq94ZgY0/download-(3).gif"
 SUPPORT_ROLE_ID = 1504998108407398501
 
 
@@ -177,14 +177,14 @@ class Tickets(commands.Cog):
             title=".",
             description=(
                 "<:a_i0:1524879966796517416>\n"
-                "<:a_i0:1524879966796517416>⋆˙ <:1524879966796517416> — ***boas vindas ao nosso sistema de tickets, "
+                "<:a_i0:1524879966796517416>⋆˙ <:a_i0:1524879966796517416> — ***boas vindas ao nosso sistema de tickets, "
                 "aqui você pode solicitar suporte e"
                 "ajuda da nossa equipe staff.‎\n"
                 "<:a_i0:1524879966796517416>\n"
                 "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***abra um ticket para receber suporte***\n"
                 "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***explique seu problema com calma e aguarde a equipe***\n"
                 "<:a_i0:1524879966796517416>\n\n"
-                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>"
+                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416> "
                 "***estamos aqui para te ajudar***^^\n"
                 "<:a_i0:1524879966796517416>"
             ),
