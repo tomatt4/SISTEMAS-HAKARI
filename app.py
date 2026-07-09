@@ -111,7 +111,7 @@ async def load_cogs():
             try:
                 # Tenta descarregar em caso de reload
                 try:
-                    bot.unload_extension(cog_name)
+                   await bot.unload_extension(cog_name)
                 except commands.ExtensionNotLoaded:
                     pass
                 except Exception as e:
@@ -119,7 +119,7 @@ async def load_cogs():
                     print(f"⚠️ Ao descarregar {cog_name}: {e}")
                 
                 # Carrega a cog (métodos síncronos na API de extensões)
-                bot.load_extension(cog_name)
+               await bot.load_extension(cog_name)
                 print(f"✅ Cog carregada: {cog_name}")
             except Exception as e:
                 print(f"❌ Erro ao carregar cog {cog_name}: {e}")
