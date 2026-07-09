@@ -387,33 +387,38 @@ def home():
   </div>
 
   <script>
-    async function updateStatus() {
-      try {
-        const response = await fetch("/api/status");
-        const data = await response.json();
+  async function updateStatus() {
+    try {
+      const response = await fetch("/api/status");
 
-        document.getElementById("statusMessage").textContent =
-          "Status carregado com sucesso. Hakari está respondendo normalmente.";
-
-        document.getElementById("uptime").textContent = data.uptime || "Indisponível";
-        document.getElementById("ping").textContent = data.ping ? data.ping + " ms" : "Indisponível";
-        document.getElementById("port").textContent = data.port || "Indisponível";
-
-        const gateway = document.getElementById("gateway");
-        gateway.textContent = data.gateway_status || "Indisponível";
-        gateway.className = "value " + (data.gateway_class || "");
-
+      if (!response.ok) {
+        throw new Error("API não respondeu");
       }
 
-        document.getElementById("gateway").textContent = "Erro de conexão";
-        document.getElementById("gateway").className = "value red";
-        document.getElementById("ping").textContent = "Falha";
-      }
+      const data = await response.json();
+
+      document.getElementById("uptime").textContent = data.uptime ?? "Indisponível";
+      document.getElementById("ping").textContent = data.ping ? `${data.ping} ms` : "Indisponível";
+      document.getElementById("port").textContent = data.port ?? "Indisponível";
+
+      const gateway = document.getElementById("gateway");
+      gateway.textContent = data.gateway_status ?? "Indisponível";
+      gateway.className = "value " + (data.gateway_class ?? "green");
+
+    } catch (error) {
+      document.getElementById("uptime").textContent = "Indisponível";
+      document.getElementById("ping").textContent = "Falha";
+      document.getElementById("port").textContent = "Indisponível";
+
+      const gateway = document.getElementById("gateway");
+      gateway.textContent = "Erro de conexão";
+      gateway.className = "value red";
     }
+  }
 
-    updateStatus();
-    setInterval(updateStatus, 5000);
-  </script>
+  updateStatus();
+  setInterval(updateStatus, 5000);
+</script>
 </body>
 </html>
 """
