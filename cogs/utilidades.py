@@ -204,7 +204,7 @@ class Utilities(commands.Cog):
                 f"latência da API: **{latency} milissegundos**\n"
                 "informações de hospedagem e monitoramento 24/7 estão no meu "
                 "[__***site de monitoramento***__](https://hakari-voltou.onrender.com)"
-                ),
+            ),
             color=(
                 discord.Color.green()
                 if latency < 100
