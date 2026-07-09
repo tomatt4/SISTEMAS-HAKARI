@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-TICKET_IMAGE = "https://i.postimg.cc/C1xWFvcx/ae83e304bef29dcb77916303bf7961b5-gif-(500-225).gif"  # coloque a imagem depois
+TICKET_IMAGE = "https://i.postimg.cc/BnVgL4cn/Ink-Stained-Pages.jpg"  # coloque a imagem depois
 SUPPORT_ROLE_ID = 1504998108407398501  # ID do cargo de suporte
 
 class TicketView(discord.ui.View):
@@ -105,9 +105,9 @@ class Tickets(commands.Cog):
         embed = discord.Embed(
             title=".",
             description=(
-                "ㅤㅤㅤㅤㅤㅤ__ ***boas vindas ao sistema de tickets!***\n\n"
-                "ㅤㅤㅤㅤㅤㅤㅤㅤㅤ***aqui você pode tirar várias dúvidas que você tem sobre o nosso servidor.***\n\n"
-                "ㅤㅤㅤ***sinta-se a vontade para ser atendido por um dos nossos staffs.***__"
+                "ㅤㅤㅤㅤㅤㅤ__ ***boas vindas ao sistema de tickets!***__\n\n"
+                "ㅤㅤㅤㅤㅤㅤㅤㅤㅤ__***aqui você pode tirar várias dúvidas que você tem sobre o nosso servidor.***___\n\n"
+                "ㅤㅤㅤ__***sinta-se a vontade para ser atendido por um dos nossos staffs***__"
             ),
             color=0xffffff
         )
