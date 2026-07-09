@@ -96,10 +96,19 @@ class TicketView(discord.ui.View):
             return
 
         embed = discord.Embed(
-            title="ticket aberto",
+            title=".",
             description=(
-                "ㅤㅤㅤㅤㅤㅤㅤㅤ  ㅤ__***boas vindas ao seu ticket!***__\n"
-                "ㅤㅤㅤ__***explique o motivo do seu ticket abaixo, enquanto aguarda a equipe.***__"
+                "<:a_i0:1524879966796517416>\n"
+                "<:a_i0:1524879966796517416>⋆˙ <:a_i0:1524879966796517416> — ***boas vindas ao seu ticket! "
+                "enquanto aguarda a nossa "
+                "equipe staff, descreva brevemente o seu suporte desejado..‎***\n"
+                "<:a_i0:1524879966796517416>\n"
+                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***não mencione staffs repetidamente***\n"
+                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***seja paciente em esperar a equipe te atender***\n"
+                "<:a_i0:1524879966796517416>\n\n"
+                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416> "
+                "***bom atendimento**^^\n"
+                "<:a_i0:1524879966796517416>"
             ),
             color=0xffffff
         )
