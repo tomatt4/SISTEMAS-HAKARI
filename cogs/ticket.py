@@ -77,12 +77,12 @@ class CloseTicketView(discord.ui.View):
         super().__init__(timeout=None)
         self.channel = channel
 
-    @discord.ui.button(label="confirmar", style=discord.ButtonStyle.sucess, emoji="✅")
+    @discord.ui.button(label="confirmar", style=discord.ButtonStyle.green, emoji="✅")
     async def confirm_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.channel.delete()
 
-    @discord.ui.button(label="cancelar", style=discord.ButtonStyle.gray, emoji="❌")
+    @discord.ui.button(label="cancelar", style=discord.ButtonStyle.red, emoji="❌")
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
             title="cancelado",
