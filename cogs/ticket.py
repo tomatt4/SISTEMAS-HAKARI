@@ -179,7 +179,7 @@ class Tickets(commands.Cog):
                 "<:a_i0:1524879966796517416>\n"
                 "<:a_i0:1524879966796517416>⋆˙ <:a_i0:1524879966796517416> — ***boas vindas ao nosso sistema de tickets, "
                 "aqui você pode solicitar suporte e"
-                "ajuda da nossa equipe staff.‎\n"
+                "ajuda da nossa equipe staff.‎***\n"
                 "<:a_i0:1524879966796517416>\n"
                 "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***abra um ticket para receber suporte***\n"
                 "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***explique seu problema com calma e aguarde a equipe***\n"
