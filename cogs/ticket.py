@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-TICKET_IMAGE = "https://i.postimg.cc/BnVgL4cn/Ink-Stained-Pages.jpg"  # coloque a imagem depois
+TICKET_IMAGE = "https://i.postimg.cc/ZRptsfK0/download-(2).gif"  # coloque a imagem depois
 SUPPORT_ROLE_ID = 1504998108407398501  # ID do cargo de suporte
 
 class TicketView(discord.ui.View):
@@ -11,6 +11,7 @@ class TicketView(discord.ui.View):
 
     @discord.ui.button(label="abrir ticket", style=discord.ButtonStyle.green, emoji="🎫")
     async def ticket_button(self, interaction: discord.Interaction, button: discord.ui.Button):
+    await interaction.response.defer(ephemeral=True)
 
         guild = interaction.guild
 
@@ -51,8 +52,8 @@ class TicketView(discord.ui.View):
         embed = discord.Embed(
             title="ticket aberto",
             description=(
-                "ㅤㅤㅤㅤㅤㅤㅤㅤㅤ__***boas vindas ao seu ticket!***\n"
-                "ㅤㅤㅤㅤㅤ***enquanto espera a staff te atender, explique o motivo do seu ticket abaixo.***__"
+                "ㅤㅤㅤㅤㅤㅤㅤㅤㅤ__***boas vindas ao seu ticket!***__\n"
+                "ㅤㅤㅤ__***explique o motivo do seu ticket abaixo, enquanto aguarda.***__"
             ),
             color=0xffffff
         )
@@ -67,7 +68,7 @@ class TicketView(discord.ui.View):
             embed=embed
         )
 
-        await interaction.response.send_message(
+        await interaction.followup.send(
             f"seu ticket foi criado: {channel.mention}",
             ephemeral=True
         )
