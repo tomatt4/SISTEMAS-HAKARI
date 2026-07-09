@@ -2,14 +2,14 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-TICKET_IMAGE = ""  # coloque a imagem depois
+TICKET_IMAGE = "https://i.postimg.cc/C1xWFvcx/ae83e304bef29dcb77916303bf7961b5-gif-(500-225).gif"  # coloque a imagem depois
 SUPPORT_ROLE_ID = 1504998108407398501  # ID do cargo de suporte
 
 class TicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="Abrir Ticket", style=discord.ButtonStyle.green, emoji="🎫")
+    @discord.ui.button(label="abrir ticket", style=discord.ButtonStyle.green, emoji="🎫")
     async def ticket_button(self, interaction: discord.Interaction, button: discord.ui.Button):
 
         guild = interaction.guild
@@ -49,11 +49,14 @@ class TicketView(discord.ui.View):
         )
 
         embed = discord.Embed(
-            title="🎫 ticket aberto",
-            description="explique seu problema e aguarde a equipe",
-            color=discord.Color.green()
+            title="ticket aberto",
+            description=(
+                "ㅤㅤㅤㅤㅤㅤㅤㅤㅤ__***boas vindas ao seu ticket!***\n"
+                "ㅤㅤㅤㅤㅤ***enquanto espera a staff te atender, explique o motivo do seu ticket abaixo.***__"
+            ),
+            color=0xffffff
         )
-        
+        embed.set_image(url="https://i.postimg.cc/MGv7qV15/download-(1).gif")
         # Mencionar o cargo de suporte
         mention_text = interaction.user.mention
         if support_role:
@@ -74,7 +77,7 @@ class CloseTicketView(discord.ui.View):
         super().__init__(timeout=None)
         self.channel = channel
 
-    @discord.ui.button(label="confirmar", style=discord.ButtonStyle.red, emoji="✅")
+    @discord.ui.button(label="confirmar", style=discord.ButtonStyle.sucess, emoji="✅")
     async def confirm_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         await self.channel.delete()
@@ -100,9 +103,13 @@ class Tickets(commands.Cog):
     async def painel_prefix(self, ctx):
         """Envia o painel de tickets (prefixo)"""
         embed = discord.Embed(
-            title="🎫 sistema de tickets",
-            description="clique no botão abaixo para abrir um ticket",
-            color=discord.Color.blurple()
+            title=".",
+            description=(
+                "ㅤㅤㅤㅤㅤㅤ__ ***boas vindas ao sistema de tickets!***\n\n"
+                "ㅤㅤㅤㅤㅤㅤㅤㅤㅤ***aqui você pode tirar várias dúvidas que você tem sobre o nosso servidor.***\n\n"
+                "ㅤㅤㅤ***sinta-se a vontade para ser atendido por um dos nossos staffs.***__"
+            ),
+            color=0xffffff
         )
 
         if TICKET_IMAGE:
