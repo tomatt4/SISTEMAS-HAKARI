@@ -4,8 +4,8 @@ from discord import app_commands
 import json
 import os
 
-CARGO_STAFF = 1500969290093039626
-CARGO_SECRETARIA = 1513653295061798922
+CARGO_STAFF = 1502742411401756753, 1501751161278169108, 1501711824079425647
+CARGO_SECRETARIA = 1506412431780610058, 1505222907821822123, 1505222967208968292
 
 
 class StaffPromotion(commands.Cog):
@@ -17,40 +17,20 @@ class StaffPromotion(commands.Cog):
         self.load_data()
 
         self.promotion_chains = {
-            1490679537032495301: {
-                "next_role": 1519102905112858757,
-                "points_needed": 10,
-                "role_name": "Staff"
+            1502742411401756753: {
+                "next_role": 1501751161278169108,
+                "points_needed": 100,
+                "role_name": "mod"
             },
-            1519102905112858757: {
-                "next_role": 1490679537032495298,
-                "points_needed": 20,
-                "role_name": "Moderador"
+            1501751161278169108: {
+                "next_role": 1501711824079425647,
+                "points_needed": 200,
+                "role_name": "admin"
             },
-            1490679537032495298: {
-                "next_role": 1519102475246899341,
-                "points_needed": 30,
-                "role_name": "Supervisor"
-            },
-            1519102475246899341: {
-                "next_role": 1518394774414037042,
-                "points_needed": 40,
-                "role_name": "Diretor"
-            },
-            1518394774414037042: {
-                "next_role": 1490679537032495303,
-                "points_needed": 50,
-                "role_name": "Administrador"
-            },
-            1490679537032495303: {
-                "next_role": 1496282936331337789,
-                "points_needed": 60,
-                "role_name": "Gestor"
-            },
-            1496282936331337789: {
-                "next_role": None,
-                "points_needed": 70,
-                "role_name": "Sub Owner",
+            1501711824079425647: {
+                "next_role": 1506412431780610058,
+                "points_needed": 300,
+                "role_name": "gerente"
                 "is_final": True
             }
         }
