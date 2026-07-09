@@ -71,7 +71,7 @@ class TicketView(discord.ui.View):
             channel = await guild.create_text_channel(
                 name=channel_name,
                 overwrites=overwrites,
-                description=f"ID do usuário: {interaction.user.id}"
+                topic=f"ID do usuário: {interaction.user.id}"
             )
 
         except discord.Forbidden:
