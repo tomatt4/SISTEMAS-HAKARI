@@ -10,20 +10,31 @@ class TicketView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
 
-    @discord.ui.button(label="abrir ticket", style=discord.ButtonStyle.green, emoji="🎫")
+    @discord.ui.button(
+        label="abrir ticket",
+        style=discord.ButtonStyle.green,
+        emoji="🎫",
+        custom_id="ticket_open_button"
+    )
     async def ticket_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer(ephemeral=True)
 
         guild = interaction.guild
 
-        existing = discord.utils.get(
-            guild.text_channels,
-            name=f"ticket-{interaction.user.name}".lower()
-        )
+        if guild is None:
+            await interaction.followup.send(
+                "isso só funciona dentro de um servidor.",
+                ephemeral=True
+            )
+            return
+
+        channel_name = f"ticket-{interaction.user.id}"
+
+        existing = discord.utils.get(guild.text_channels, name=channel_name)
 
         if existing:
             await interaction.followup.send(
-                "você já possui um ticket aberto",
+                f"você já possui um ticket aberto: {existing.mention}",
                 ephemeral=True
             )
             return
@@ -31,10 +42,19 @@ class TicketView(discord.ui.View):
         support_role = guild.get_role(SUPPORT_ROLE_ID)
 
         overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
+            guild.default_role: discord.PermissionOverwrite(
+                view_channel=False
+            ),
             interaction.user: discord.PermissionOverwrite(
                 view_channel=True,
                 send_messages=True,
+                read_message_history=True
+            ),
+            guild.me: discord.PermissionOverwrite(
+                view_channel=True,
+                send_messages=True,
+                manage_channels=True,
+                manage_messages=True,
                 read_message_history=True
             )
         }
@@ -47,11 +67,33 @@ class TicketView(discord.ui.View):
                 read_message_history=True
             )
 
-        channel = await guild.create_text_channel(
-            name=f"ticket-{interaction.user.name}".lower(),
-            overwrites=overwrites,
-            description=f"ID do usuário: {interaction.user.id}"
-        )
+        try:
+            channel = await guild.create_text_channel(
+                name=channel_name,
+                overwrites=overwrites,
+                description=f"ID do usuário: {interaction.user.id}"
+            )
+
+        except discord.Forbidden:
+            await interaction.followup.send(
+                "não consegui criar o canal. falta permissão de **Gerenciar Canais** ou permissão na categoria.",
+                ephemeral=True
+            )
+            return
+
+        except discord.HTTPException as e:
+            await interaction.followup.send(
+                f"deu erro ao criar o canal:\n```py\n{e}\n```",
+                ephemeral=True
+            )
+            return
+
+        except Exception as e:
+            await interaction.followup.send(
+                f"erro inesperado ao criar o ticket:\n```py\n{e}\n```",
+                ephemeral=True
+            )
+            return
 
         embed = discord.Embed(
             title="ticket aberto",
@@ -61,6 +103,7 @@ class TicketView(discord.ui.View):
             ),
             color=0xffffff
         )
+
         embed.set_image(url="https://i.postimg.cc/MGv7qV15/download-(1).gif")
 
         mention_text = interaction.user.mention
@@ -84,18 +127,36 @@ class CloseTicketView(discord.ui.View):
         super().__init__(timeout=None)
         self.channel = channel
 
-    @discord.ui.button(label="confirmar", style=discord.ButtonStyle.green, emoji="✅")
+    @discord.ui.button(
+        label="confirmar",
+        style=discord.ButtonStyle.green,
+        emoji="✅",
+        custom_id="ticket_close_confirm"
+    )
     async def confirm_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
-        await self.channel.delete()
 
-    @discord.ui.button(label="cancelar", style=discord.ButtonStyle.red, emoji="❌")
+        try:
+            await self.channel.delete()
+        except Exception as e:
+            await interaction.followup.send(
+                f"não consegui fechar o ticket:\n```py\n{e}\n```",
+                ephemeral=True
+            )
+
+    @discord.ui.button(
+        label="cancelar",
+        style=discord.ButtonStyle.red,
+        emoji="❌",
+        custom_id="ticket_close_cancel"
+    )
     async def cancel_button(self, interaction: discord.Interaction, button: discord.ui.Button):
         embed = discord.Embed(
             title="cancelado",
             description="ticket não será fechado",
             color=discord.Color.red()
         )
+
         embed.set_footer(
             text="se tu quiser fechar ele agora é só rodar o mesmo comando e clicar em confirmar"
         )
@@ -107,6 +168,7 @@ class CloseTicketView(discord.ui.View):
 class Tickets(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
+        self.bot.add_view(TicketView())
 
     @commands.command(name="painel")
     @commands.has_permissions(administrator=True)
@@ -153,10 +215,10 @@ class Tickets(commands.Cog):
 
         support_role = ctx.guild.get_role(SUPPORT_ROLE_ID)
 
-        if support_role not in ctx.author.roles:
+        if support_role not in ctx.author.roles and not ctx.author.guild_permissions.administrator:
             embed = discord.Embed(
                 title="❌ epa pera aí amigão",
-                description="só administradores podem fechar o ticket",
+                description="só administradores ou suporte podem fechar o ticket",
                 color=discord.Color.red()
             )
             await ctx.send(embed=embed)
@@ -178,17 +240,19 @@ class Tickets(commands.Cog):
                 description="este comando só pode ser usado em canais de ticket!",
                 color=discord.Color.red()
             )
+
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
         support_role = interaction.guild.get_role(SUPPORT_ROLE_ID)
 
-        if support_role not in interaction.user.roles:
+        if support_role not in interaction.user.roles and not interaction.user.guild_permissions.administrator:
             embed = discord.Embed(
                 title="❌ pera aí",
-                description="só administradores podem fechar o ticket",
+                description="só administradores ou suporte podem fechar o ticket",
                 color=discord.Color.red()
             )
+
             await interaction.response.send_message(embed=embed, ephemeral=True)
             return
 
