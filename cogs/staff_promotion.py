@@ -30,7 +30,7 @@ class StaffPromotion(commands.Cog):
             1501711824079425647: {
                 "next_role": 1506412431780610058,
                 "points_needed": 300,
-                "role_name": "gerente"
+                "role_name": "gerente",
                 "is_final": True
             }
         }
