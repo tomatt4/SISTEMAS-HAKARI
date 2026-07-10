@@ -46,65 +46,73 @@ class HakariBot(commands.Bot):
         )
 
     async def setup_hook(self):
+    print("🔧 setup_hook iniciado.", flush=True)
+
+    try:
         await self.load_cogs()
+    except Exception as erro:
+        print(
+            f"❌ Erro geral ao carregar cogs: "
+            f"{type(erro).__name__}: {erro}",
+            flush=True
+        )
+
+    print(
+        f"📦 Cogs atualmente carregadas: {list(self.cogs.keys())}",
+        flush=True
+    )
+
+    try:
+        guild = discord.Object(id=GUILD_ID)
+
+        comandos_servidor = await self.tree.sync(guild=guild)
+        print(
+            f"✅ {len(comandos_servidor)} comandos sincronizados no servidor.",
+            flush=True
+        )
+
+        comandos_globais = await self.tree.sync()
+        print(
+            f"✅ {len(comandos_globais)} comandos globais sincronizados.",
+            flush=True
+        )
+
+    except Exception as erro:
+        print(
+            f"❌ Erro ao sincronizar comandos: "
+            f"{type(erro).__name__}: {erro}",
+            flush=True
+        )
+
+    async def load_cogs(self):
+    cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
+
+    print(f"📁 Procurando cogs em: {cogs_dir}", flush=True)
+    print(f"📁 Pasta existe: {os.path.isdir(cogs_dir)}", flush=True)
+
+    if not os.path.isdir(cogs_dir):
+        print("❌ Diretório cogs não encontrado.", flush=True)
+        return
+
+    arquivos = os.listdir(cogs_dir)
+    print(f"📄 Arquivos encontrados: {arquivos}", flush=True)
+
+    for filename in arquivos:
+        if not filename.endswith(".py") or filename.startswith("__"):
+            continue
+
+        cog_name = f"cogs.{filename[:-3]}"
 
         try:
-            guild = discord.Object(id=GUILD_ID)
-
-            comandos_servidor = await self.tree.sync(guild=guild)
-            comandos_globais = await self.tree.sync()
-
-            print(
-                f"✅ Slash commands sincronizados: "
-                f"{len(comandos_servidor)} no servidor e "
-                f"{len(comandos_globais)} globais."
-            )
-
-            print(
-                "📌 Comandos do servidor:",
-                [comando.name for comando in comandos_servidor]
-            )
-
-            print(
-                "🌎 Comandos globais:",
-                [comando.name for comando in comandos_globais]
-            )
+            await self.load_extension(cog_name)
+            print(f"✅ Cog carregada: {cog_name}", flush=True)
 
         except Exception as erro:
             print(
-                f"❌ Erro ao sincronizar slash commands: "
-                f"{type(erro).__name__}: {erro}"
+                f"❌ Erro ao carregar {cog_name}: "
+                f"{type(erro).__name__}: {erro}",
+                flush=True
             )
-
-    async def load_cogs(self):
-        cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
-
-        if not os.path.isdir(cogs_dir):
-            print("⚠️ Diretório ./cogs não existe.")
-            return
-
-        for filename in os.listdir(cogs_dir):
-            if not filename.endswith(".py"):
-                continue
-
-            if filename.startswith("__"):
-                continue
-
-            cog_name = f"cogs.{filename[:-3]}"
-
-            try:
-                await self.load_extension(cog_name)
-                print(f"✅ Cog carregada: {cog_name}")
-
-            except commands.ExtensionAlreadyLoaded:
-                await self.reload_extension(cog_name)
-                print(f"🔄 Cog recarregada: {cog_name}")
-
-            except Exception as erro:
-                print(
-                    f"❌ Erro ao carregar {cog_name}: "
-                    f"{type(erro).__name__}: {erro}"
-                )
 
 
 bot = HakariBot()
@@ -150,27 +158,29 @@ async def on_error(event, *args, **kwargs):
 
 async def main():
     if not TOKEN:
-        print("❌ Variável TOKEN não encontrada.")
-        return
+        raise RuntimeError("Variável TOKEN não encontrada.")
 
     if not APPLICATION_ID:
-        print("❌ Variável APPLICATION_ID não encontrada.")
-        return
+        raise RuntimeError("Variável APPLICATION_ID não encontrada.")
 
-    print("TOKEN encontrado:", bool(TOKEN))
-    print("Tamanho do TOKEN:", len(TOKEN))
-    print("Partes separadas por ponto:", len(TOKEN.split(".")))
-    print("Tem espaço/quebra de linha:", any(c.isspace() for c in TOKEN))
-    print("Começa com 'Bot ':", TOKEN.startswith("Bot "))
-    print("Tem aspas externas:", TOKEN.startswith(("'", '"')) or TOKEN.endswith(("'", '"')))
-    print("APPLICATION_ID:", APPLICATION_ID)
-
+    print("1️⃣ Iniciando servidor Flask...", flush=True)
     keep_alive(bot)
 
-    async with bot:
-        await bot.start(TOKEN)
+    print("2️⃣ Flask iniciado. Preparando bot...", flush=True)
 
+    try:
+        async with bot:
+            print("3️⃣ Chamando bot.start()...", flush=True)
+            await bot.start(TOKEN.strip())
 
+    except Exception as erro:
+        print(
+            f"❌ ERRO AO INICIAR O BOT: "
+            f"{type(erro).__name__}: {erro}",
+            flush=True
+        )
+        raise
+        
 if __name__ == "__main__":
     try:
         asyncio.run(main())
