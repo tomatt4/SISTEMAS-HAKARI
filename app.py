@@ -10,7 +10,7 @@ from discord.ext import tasks
 
 status_list = [
     "dis.gg/ccdv | /help",
-    "hakari v2.9.0",
+    "hakari v2.10.24",
     "feito por mattzaddas",
     "PORRA NORUEGA ESTUDOU O BRASIL",
     "meu prefixo é uma virgula ok",
