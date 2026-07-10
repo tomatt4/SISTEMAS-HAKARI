@@ -718,8 +718,3 @@ class Economia(commands.Cog):
 
 async def setup(bot: commands.Bot) -> None:
     await bot.add_cog(Economia(bot))
-
-    # sincroniza so em um servidor
-    # ai o resto do servidor nem aparece esses comandos
-    guild = discord.Object(id=ECONOMY_GUILD_ID)
-    await bot.tree.sync(guild=guild)
