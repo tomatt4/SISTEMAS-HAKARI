@@ -7,8 +7,8 @@ from discord.ext import commands, tasks
 from keep_alive import keep_alive
 
 
-TOKEN = os.getenv("TOKEN")
-APPLICATION_ID = os.getenv("APPLICATION_ID")
+TOKEN = os.getenv("TOKEN", "").strip()
+APPLICATION_ID = os.getenv("APPLICATION_ID", "").strip()
 
 GUILD_ID = 1500231901397516340
 
