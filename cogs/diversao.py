@@ -412,11 +412,5 @@ class Confissoes(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Confissoes(bot))
-
-    # Sync só nesse servidor: aparece quase instantâneo e evita ficar esperando sync global.
-    try:
-        synced = await bot.tree.sync(guild=GUILD)
-        print(f"✅ Cog confissões carregado. Slash syncados no servidor: {[cmd.name for cmd in synced]}")
-    except Exception as e:
-        print(f"⚠️ Cog confissões carregou, mas falhou ao syncar slash commands: {type(e).__name__}: {e}")
+    await bot.add_cog(Diversao(bot))
+    print("✅ Cog de confissões carregado.")
