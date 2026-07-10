@@ -411,7 +411,7 @@ class PixConfirmationView(discord.ui.View):
             title="pix realizado com sucesso",
             description=(
                 f"{self.sender.mention} enviou "
-                f"**r$ {self.amount:,}** para {self.receiver.mention}."
+                f"**R$ {self.amount:,}** para {self.receiver.mention}."
             ).replace(",", "."),
             color=discord.Color.green(),
         )
@@ -454,7 +454,7 @@ class PixConfirmationView(discord.ui.View):
             title="pix recusado",
             description=(
                 f"{self.receiver.mention} recusou o pix de "
-                f"**r$ {self.amount:,}** enviado por {self.sender.mention}."
+                f"**R$ {self.amount:,}** enviado por {self.sender.mention}."
             ).replace(",", "."),
             color=discord.Color.red(),
         )
@@ -536,8 +536,8 @@ class Economia(commands.Cog):
 
         await interaction.response.send_message(
             (
-                f"adicionei **r$ {quantia:,}** para {usuario.mention}.\n"
-                f"novo saldo: **r$ {new_balance:,}**."
+                f"adicionei **R$ {quantia:,}** para {usuario.mention}.\n"
+                f"novo saldo: **R$ {new_balance:,}**."
             ).replace(",", "."),
             ephemeral=True,
         )
@@ -573,7 +573,7 @@ class Economia(commands.Cog):
             await interaction.response.send_message(
                 (
                     "você já resgatou seu daily.\n"
-                    f"tente novamente <t:{next_daily}:r>."
+                    f"tente novamente <t:{next_daily}:R>."
                 ),
                 ephemeral=True,
             )
@@ -587,10 +587,10 @@ class Economia(commands.Cog):
 
         await interaction.response.send_message(
             (
-                f"você recebeu **r$ {amount:,}** no daily."
+                f"você recebeu **R$ {amount:,}** no daily."
                 f"{bonus_text}\n"
-                f"seu saldo agora é **r$ {value:,}**.\n"
-                f"próximo daily: <t:{next_daily}:r>."
+                f"seu saldo agora é **R$ {value:,}**.\n"
+                f"próximo daily: <t:{next_daily}:R>."
             ).replace(",", "."),
             ephemeral=True,
         )
@@ -635,7 +635,7 @@ class Economia(commands.Cog):
         if sender_balance < quantia:
             await interaction.response.send_message(
                 (
-                    f"saldo insuficiente. você possui **r$ {sender_balance:,}**."
+                    f"saldo insuficiente. você possui **R$ {sender_balance:,}**."
                 ).replace(",", "."),
                 ephemeral=True,
             )
@@ -653,7 +653,7 @@ class Economia(commands.Cog):
             title="confirmação de pix",
             description=(
                 f"{usuario.mention}, {interaction.user.mention} quer enviar "
-                f"**r$ {quantia:,}** para você.\n\n"
+                f"**R$ {quantia:,}** para você.\n\n"
                 "confirme ou recuse usando os botões abaixo."
             ).replace(",", "."),
             color=discord.Color.blurple(),
@@ -700,8 +700,8 @@ class Economia(commands.Cog):
         if not success:
             await interaction.response.send_message(
                 (
-                    f"{usuario.mention} não possui **r$ {quantia:,}**.\n"
-                    f"saldo atual: **r$ {new_balance:,}**."
+                    f"{usuario.mention} não possui **R$ {quantia:,}**.\n"
+                    f"saldo atual: **R$ {new_balance:,}**."
                 ).replace(",", "."),
                 ephemeral=True,
             )
@@ -709,8 +709,8 @@ class Economia(commands.Cog):
 
         await interaction.response.send_message(
             (
-                f"removi **r$ {quantia:,}** de {usuario.mention}.\n"
-                f"novo saldo: **r$ {new_balance:,}**."
+                f"removi **R$ {quantia:,}** de {usuario.mention}.\n"
+                f"novo saldo: **R$ {new_balance:,}**."
             ).replace(",", "."),
             ephemeral=True,
         )
@@ -723,4 +723,3 @@ async def setup(bot: commands.Bot) -> None:
     # ai o resto do servidor nem aparece esses comandos
     guild = discord.Object(id=ECONOMY_GUILD_ID)
     await bot.tree.sync(guild=guild)
-
