@@ -64,12 +64,6 @@ rate_limit_handler = RateLimitHandler()
 
 @bot.event
 async def on_ready():
-    try:
-        synced = await bot.tree.sync()
-        print(f"✅ {len(synced)} slash commands sincronizados!")
-    except Exception as e:
-        print(f"❌ erro ao sincronizar slash commands: {e}")
-
     print(f'✅ Logado como {bot.user}')
     
     if not trocar_status.is_running():
@@ -126,15 +120,29 @@ async def load_cogs():
 
 async def main():
     if not TOKEN:
-        print("❌ Variável de ambiente TOKEN não encontrada. Defina o TOKEN para iniciar o bot.")
+        print("❌ Variável de ambiente TOKEN não encontrada.")
+        return
+
+    if not APPLICATION_ID:
+        print("❌ Variável APPLICATION_ID não encontrada.")
         return
 
     async with bot:
         await load_cogs()
-        # Inicia o keep-alive passando a instância do bot para que a página consiga ler o latency/ping
+
+        try:
+            synced = await bot.tree.sync()
+            print(f"✅ {len(synced)} slash commands globais sincronizados!")
+
+            for command in synced:
+                print(f"   /{command.name}")
+
+        except Exception as e:
+            print(f"❌ Erro ao sincronizar slash commands: {type(e).__name__}: {e}")
+
         keep_alive(bot)
         await bot.start(TOKEN)
-
+        
 if __name__ == "__main__":
     try:
         asyncio.run(main())
