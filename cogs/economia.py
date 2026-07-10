@@ -10,7 +10,7 @@ from discord.ext import commands
 
 
 # ============================================================
-# CONFIGURAÇÕES
+# configurações
 # ============================================================
 
 ECONOMY_GUILD_ID = 1500231901397516340
@@ -28,7 +28,7 @@ DATABASE_PATH = Path("data") / "economia.db"
 
 
 # ============================================================
-# BANCO DE DADOS
+# banco de dados
 # ============================================================
 
 class EconomyDatabase:
@@ -186,7 +186,7 @@ class EconomyDatabase:
         amount: int,
     ) -> tuple[bool, int, int]:
         """
-        Retorna:
+        retorna:
         - resgatado: bool
         - saldo ou segundos restantes: int
         - próximo timestamp: int
@@ -246,7 +246,7 @@ class EconomyDatabase:
         amount: int,
     ) -> tuple[bool, int, int]:
         """
-        Retorna:
+        retorna:
         - transferido: bool
         - saldo do remetente
         - saldo do destinatário
@@ -314,7 +314,7 @@ class EconomyDatabase:
 
 
 # ============================================================
-# CONFIRMAÇÃO DO PIX
+# confirmação do pix
 # ============================================================
 
 class PixConfirmationView(discord.ui.View):
@@ -344,7 +344,7 @@ class PixConfirmationView(discord.ui.View):
     ) -> bool:
         if interaction.user.id != self.receiver.id:
             await interaction.response.send_message(
-                "Apenas quem vai receber o PIX pode confirmar ou recusar.",
+                "apenas quem vai receber o pix pode confirmar ou recusar.",
                 ephemeral=True,
             )
             return False
@@ -357,7 +357,7 @@ class PixConfirmationView(discord.ui.View):
                 item.disabled = True
 
     @discord.ui.button(
-        label="Confirmar PIX",
+        label="confirmar pix",
         style=discord.ButtonStyle.green,
         emoji="✅",
     )
@@ -368,7 +368,7 @@ class PixConfirmationView(discord.ui.View):
     ) -> None:
         if self.finished:
             await interaction.response.send_message(
-                "Este PIX já foi finalizado.",
+                "este pix já foi finalizado.",
                 ephemeral=True,
             )
             return
@@ -387,7 +387,7 @@ class PixConfirmationView(discord.ui.View):
 
         if not success:
             embed = discord.Embed(
-                title="PIX cancelado",
+                title="pix cancelado",
                 description=(
                     f"{self.sender.mention} não possui mais saldo suficiente "
                     "para concluir esta transferência."
@@ -395,7 +395,7 @@ class PixConfirmationView(discord.ui.View):
                 color=discord.Color.red(),
             )
             embed.add_field(
-                name="Saldo atual",
+                name="saldo atual",
                 value=f"R$ {sender_balance:,}".replace(",", "."),
                 inline=False,
             )
@@ -408,19 +408,19 @@ class PixConfirmationView(discord.ui.View):
             return
 
         embed = discord.Embed(
-            title="PIX realizado com sucesso",
+            title="pix realizado com sucesso",
             description=(
                 f"{self.sender.mention} enviou "
-                f"**R$ {self.amount:,}** para {self.receiver.mention}."
+                f"**r$ {self.amount:,}** para {self.receiver.mention}."
             ).replace(",", "."),
             color=discord.Color.green(),
         )
         embed.add_field(
-            name=f"Saldo de {self.sender.display_name}",
+            name=f"saldo de {self.sender.display_name}",
             value=f"R$ {sender_balance:,}".replace(",", "."),
         )
         embed.add_field(
-            name=f"Saldo de {self.receiver.display_name}",
+            name=f"saldo de {self.receiver.display_name}",
             value=f"R$ {receiver_balance:,}".replace(",", "."),
         )
 
@@ -431,7 +431,7 @@ class PixConfirmationView(discord.ui.View):
         self.stop()
 
     @discord.ui.button(
-        label="Recusar",
+        label="recusar",
         style=discord.ButtonStyle.red,
         emoji="✖️",
     )
@@ -442,7 +442,7 @@ class PixConfirmationView(discord.ui.View):
     ) -> None:
         if self.finished:
             await interaction.response.send_message(
-                "Este PIX já foi finalizado.",
+                "este pix já foi finalizado.",
                 ephemeral=True,
             )
             return
@@ -451,10 +451,10 @@ class PixConfirmationView(discord.ui.View):
         self.disable_all_buttons()
 
         embed = discord.Embed(
-            title="PIX recusado",
+            title="pix recusado",
             description=(
-                f"{self.receiver.mention} recusou o PIX de "
-                f"**R$ {self.amount:,}** enviado por {self.sender.mention}."
+                f"{self.receiver.mention} recusou o pix de "
+                f"**r$ {self.amount:,}** enviado por {self.sender.mention}."
             ).replace(",", "."),
             color=discord.Color.red(),
         )
@@ -476,10 +476,10 @@ class PixConfirmationView(discord.ui.View):
             return
 
         embed = discord.Embed(
-            title="PIX expirado",
+            title="pix expirado",
             description=(
-                "A confirmação não foi respondida dentro de 2 minutos. "
-                "Nenhum valor foi transferido."
+                "a confirmação não foi respondida dentro de 2 minutos. "
+                "nenhum valor foi transferido."
             ),
             color=discord.Color.orange(),
         )
@@ -491,7 +491,7 @@ class PixConfirmationView(discord.ui.View):
 
 
 # ============================================================
-# COG
+# cog
 # ============================================================
 
 class Economia(commands.Cog):
@@ -508,12 +508,12 @@ class Economia(commands.Cog):
 
     @app_commands.command(
         name="addreais",
-        description="Adiciona reais ao saldo de um usuário.",
+        description="adiciona reais ao saldo de um usuário.",
     )
     @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
     @app_commands.describe(
-        usuario="Usuário que receberá os reais.",
-        quantia="Quantidade entre 3 e 1.250.000 reais.",
+        usuario="usuário que receberá os reais.",
+        quantia="quantidade entre 3 e 1.250.000 reais.",
     )
     async def addreais(
         self,
@@ -523,7 +523,7 @@ class Economia(commands.Cog):
     ) -> None:
         if not self.is_guild_owner(interaction):
             await interaction.response.send_message(
-                "Apenas o dono com posse do servidor pode usar este comando.",
+                "apenas o dono com posse do servidor pode usar este comando.",
                 ephemeral=True,
             )
             return
@@ -536,15 +536,15 @@ class Economia(commands.Cog):
 
         await interaction.response.send_message(
             (
-                f"Adicionei **R$ {quantia:,}** para {usuario.mention}.\n"
-                f"Novo saldo: **R$ {new_balance:,}**."
+                f"adicionei **r$ {quantia:,}** para {usuario.mention}.\n"
+                f"novo saldo: **r$ {new_balance:,}**."
             ).replace(",", "."),
             ephemeral=True,
         )
 
     @app_commands.command(
         name="daily",
-        description="Resgata uma recompensa diária em reais.",
+        description="resgata uma recompensa diária em reais.",
     )
     @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
     async def daily(
@@ -572,37 +572,37 @@ class Economia(commands.Cog):
         if not claimed:
             await interaction.response.send_message(
                 (
-                    "Você já resgatou seu daily.\n"
-                    f"Tente novamente <t:{next_daily}:R>."
+                    "você já resgatou seu daily.\n"
+                    f"tente novamente <t:{next_daily}:r>."
                 ),
                 ephemeral=True,
             )
             return
 
         bonus_text = (
-            "\nBônus de cargo **1,5x** aplicado."
+            "\nbônus de cargo **1,5x** aplicado."
             if has_bonus_role
             else ""
         )
 
         await interaction.response.send_message(
             (
-                f"Você recebeu **R$ {amount:,}** no daily."
+                f"você recebeu **r$ {amount:,}** no daily."
                 f"{bonus_text}\n"
-                f"Seu saldo agora é **R$ {value:,}**.\n"
-                f"Próximo daily: <t:{next_daily}:R>."
+                f"seu saldo agora é **r$ {value:,}**.\n"
+                f"próximo daily: <t:{next_daily}:r>."
             ).replace(",", "."),
             ephemeral=True,
         )
 
     @app_commands.command(
         name="pix",
-        description="Envia reais para outro usuário após a confirmação dele.",
+        description="envia reais para outro usuário após a confirmação dele.",
     )
     @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
     @app_commands.describe(
-        usuario="Usuário que receberá o PIX.",
-        quantia="Quantidade entre 3 e 1.250.000 reais.",
+        usuario="usuário que receberá o pix.",
+        quantia="quantidade entre 3 e 1.250.000 reais.",
     )
     async def pix(
         self,
@@ -615,14 +615,14 @@ class Economia(commands.Cog):
 
         if usuario.id == interaction.user.id:
             await interaction.response.send_message(
-                "Você não pode enviar um PIX para si mesmo.",
+                "você não pode enviar um pix para si mesmo.",
                 ephemeral=True,
             )
             return
 
         if usuario.bot:
             await interaction.response.send_message(
-                "Você não pode enviar um PIX para bots.",
+                "você não pode enviar um pix para bots.",
                 ephemeral=True,
             )
             return
@@ -635,7 +635,7 @@ class Economia(commands.Cog):
         if sender_balance < quantia:
             await interaction.response.send_message(
                 (
-                    f"Saldo insuficiente. Você possui **R$ {sender_balance:,}**."
+                    f"saldo insuficiente. você possui **r$ {sender_balance:,}**."
                 ).replace(",", "."),
                 ephemeral=True,
             )
@@ -650,15 +650,15 @@ class Economia(commands.Cog):
         )
 
         embed = discord.Embed(
-            title="Confirmação de PIX",
+            title="confirmação de pix",
             description=(
                 f"{usuario.mention}, {interaction.user.mention} quer enviar "
-                f"**R$ {quantia:,}** para você.\n\n"
-                "Confirme ou recuse usando os botões abaixo."
+                f"**r$ {quantia:,}** para você.\n\n"
+                "confirme ou recuse usando os botões abaixo."
             ).replace(",", "."),
             color=discord.Color.blurple(),
         )
-        embed.set_footer(text="A solicitação expira em 2 minutos.")
+        embed.set_footer(text="a solicitação expira em 2 minutos.")
 
         await interaction.response.send_message(
             content=usuario.mention,
@@ -671,12 +671,12 @@ class Economia(commands.Cog):
 
     @app_commands.command(
         name="remover_reais",
-        description="Remove reais do saldo de um usuário.",
+        description="remove reais do saldo de um usuário.",
     )
     @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
     @app_commands.describe(
-        usuario="Usuário que terá reais removidos.",
-        quantia="Quantidade de reais que será removida.",
+        usuario="usuário que terá reais removidos.",
+        quantia="quantidade de reais que será removida.",
     )
     async def remover_reais(
         self,
@@ -700,8 +700,8 @@ class Economia(commands.Cog):
         if not success:
             await interaction.response.send_message(
                 (
-                    f"{usuario.mention} não possui **R$ {quantia:,}**.\n"
-                    f"saldo atual: **R$ {new_balance:,}**."
+                    f"{usuario.mention} não possui **r$ {quantia:,}**.\n"
+                    f"saldo atual: **r$ {new_balance:,}**."
                 ).replace(",", "."),
                 ephemeral=True,
             )
@@ -709,8 +709,8 @@ class Economia(commands.Cog):
 
         await interaction.response.send_message(
             (
-                f"removi **R$ {quantia:,}** de {usuario.mention}.\n"
-                f"novo saldo: **R$ {new_balance:,}**."
+                f"removi **r$ {quantia:,}** de {usuario.mention}.\n"
+                f"novo saldo: **r$ {new_balance:,}**."
             ).replace(",", "."),
             ephemeral=True,
         )
@@ -723,3 +723,4 @@ async def setup(bot: commands.Bot) -> None:
     # ai o resto do servidor nem aparece esses comandos
     guild = discord.Object(id=ECONOMY_GUILD_ID)
     await bot.tree.sync(guild=guild)
+
