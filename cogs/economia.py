@@ -481,7 +481,7 @@ class PixConfirmationView(discord.ui.View):
                 "a confirmação não foi respondida dentro de 2 minutos. "
                 "nenhum valor foi transferido."
             ),
-            color=discord.Color.orange(),
+            color=discord.Color.red(),
         )
 
         try:
@@ -548,7 +548,7 @@ class Economia(commands.Cog):
             )
             embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else "")
 
-        await interaction.response.send_message(embed=embed, ephemeral=True)
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(
         name="addreais",
@@ -557,7 +557,7 @@ class Economia(commands.Cog):
     @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
     @app_commands.describe(
         usuario="usuário que receberá os reais.",
-        quantia="quantidade entre 3 e 1.250.000 reais.",
+        quantia="quantidade entre 1 e 500.000.000.000.000 reais.",
     )
     async def addreais(
         self,
@@ -583,7 +583,6 @@ class Economia(commands.Cog):
                 f"adicionei **R$ {quantia:,}** para {usuario.mention}.\n"
                 f"novo saldo: **R$ {new_balance:,}**."
             ).replace(",", "."),
-            ephemeral=True,
         )
 
     @app_commands.command(
@@ -619,7 +618,6 @@ class Economia(commands.Cog):
                     "você já resgatou seu daily.\n"
                     f"tente novamente <t:{next_daily}:R>."
                 ),
-                ephemeral=True,
             )
             return
 
@@ -636,7 +634,6 @@ class Economia(commands.Cog):
                 f"seu saldo agora é **R$ {value:,}**.\n"
                 f"próximo daily: <t:{next_daily}:R>."
             ).replace(",", "."),
-            ephemeral=True,
         )
 
     @app_commands.command(
@@ -646,7 +643,7 @@ class Economia(commands.Cog):
     @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
     @app_commands.describe(
         usuario="usuário que receberá o pix.",
-        quantia="quantidade entre 3 e 1.250.000 reais.",
+        quantia="quantidade entre 3 e 500.000.000.000.000 reais.",
     )
     async def pix(
         self,
@@ -756,7 +753,7 @@ class Economia(commands.Cog):
                 f"removi **R$ {quantia:,}** de {usuario.mention}.\n"
                 f"novo saldo: **R$ {new_balance:,}**."
             ).replace(",", "."),
-            ephemeral=True,
+            ephemeral=False,
         )
 
 
