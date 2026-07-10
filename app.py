@@ -1,17 +1,18 @@
 import os
 import asyncio
 import random
+import traceback
+import sys
+
 import discord
-
 from discord.ext import commands, tasks
-from keep_alive import keep_alive
 
+from keep_alive import keep_alive
 
 TOKEN = os.getenv("TOKEN", "").strip()
 APPLICATION_ID = os.getenv("APPLICATION_ID", "").strip()
 
 GUILD_ID = 1500231901397516340
-
 
 status_list = [
     "dis.gg/ccdv | /help",
@@ -33,7 +34,6 @@ discord_status_list = [
     discord.Status.online
 ]
 
-
 intents = discord.Intents.all()
 
 
@@ -45,27 +45,26 @@ class HakariBot(commands.Bot):
             application_id=int(APPLICATION_ID)
         )
 
-        async def setup_hook(self):
-            print("🔧 setup_hook iniciado.", flush=True)
+    async def setup_hook(self):
+        print("🔧 setup_hook iniciado.", flush=True)
 
-            try:
-                await self.load_cogs()
-            except Exception as erro:
-                print(
-                    f"❌ Erro geral ao carregar cogs: "
-                    f"{type(erro).__name__}: {erro}",
-                    flush=True
-                )
-
+        try:
+            await self.load_cogs()
+        except Exception as erro:
             print(
-                f"📦 Cogs atualmente carregadas: {list(self.cogs.keys())}",
+                f"❌ Erro geral ao carregar cogs: {type(erro).__name__}: {erro}",
                 flush=True
             )
 
-            try:
-                guild = discord.Object(id=GUILD_ID)
+        print(
+            f"📦 Cogs atualmente carregadas: {list(self.cogs.keys())}",
+            flush=True
+        )
 
-                comandos_servidor = await self.tree.sync(guild=guild)
+        try:
+            guild = discord.Object(id=GUILD_ID)
+
+            comandos_servidor = await self.tree.sync(guild=guild)
             print(
                 f"✅ {len(comandos_servidor)} comandos sincronizados no servidor.",
                 flush=True
@@ -79,40 +78,38 @@ class HakariBot(commands.Bot):
 
         except Exception as erro:
             print(
-                f"❌ Erro ao sincronizar comandos: "
-                f"{type(erro).__name__}: {erro}",
+                f"❌ Erro ao sincronizar comandos: {type(erro).__name__}: {erro}",
                 flush=True
             )
 
     async def load_cogs(self):
-    cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
+        cogs_dir = os.path.join(os.path.dirname(__file__), "cogs")
 
-    print(f"📁 Procurando cogs em: {cogs_dir}", flush=True)
-    print(f"📁 Pasta existe: {os.path.isdir(cogs_dir)}", flush=True)
+        print(f"📁 Procurando cogs em: {cogs_dir}", flush=True)
+        print(f"📁 Pasta existe: {os.path.isdir(cogs_dir)}", flush=True)
 
-    if not os.path.isdir(cogs_dir):
-        print("❌ Diretório cogs não encontrado.", flush=True)
-        return
+        if not os.path.isdir(cogs_dir):
+            print("❌ Diretório cogs não encontrado.", flush=True)
+            return
 
-    arquivos = os.listdir(cogs_dir)
-    print(f"📄 Arquivos encontrados: {arquivos}", flush=True)
+        arquivos = os.listdir(cogs_dir)
+        print(f"📄 Arquivos encontrados: {arquivos}", flush=True)
 
-    for filename in arquivos:
-        if not filename.endswith(".py") or filename.startswith("__"):
-            continue
+        for filename in arquivos:
+            if not filename.endswith(".py") or filename.startswith("__"):
+                continue
 
-        cog_name = f"cogs.{filename[:-3]}"
+            cog_name = f"cogs.{filename[:-3]}"
 
-        try:
-            await self.load_extension(cog_name)
-            print(f"✅ Cog carregada: {cog_name}", flush=True)
+            try:
+                await self.load_extension(cog_name)
+                print(f"✅ Cog carregada: {cog_name}", flush=True)
 
-        except Exception as erro:
-            print(
-                f"❌ Erro ao carregar {cog_name}: "
-                f"{type(erro).__name__}: {erro}",
-                flush=True
-            )
+            except Exception as erro:
+                print(
+                    f"❌ Erro ao carregar {cog_name}: {type(erro).__name__}: {erro}",
+                    flush=True
+                )
 
 
 bot = HakariBot()
@@ -143,9 +140,6 @@ async def on_ready():
 
 @bot.event
 async def on_error(event, *args, **kwargs):
-    import traceback
-    import sys
-
     print(f"❌ Erro não tratado no evento: {event}")
 
     exc_type, exc_value, exc_traceback = sys.exc_info()
@@ -171,16 +165,16 @@ async def main():
     try:
         async with bot:
             print("3️⃣ Chamando bot.start()...", flush=True)
-            await bot.start(TOKEN.strip())
+            await bot.start(TOKEN)
 
     except Exception as erro:
         print(
-            f"❌ ERRO AO INICIAR O BOT: "
-            f"{type(erro).__name__}: {erro}",
+            f"❌ ERRO AO INICIAR O BOT: {type(erro).__name__}: {erro}",
             flush=True
         )
         raise
-        
+
+
 if __name__ == "__main__":
     try:
         asyncio.run(main())
