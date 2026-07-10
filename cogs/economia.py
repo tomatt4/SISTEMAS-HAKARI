@@ -507,6 +507,50 @@ class Economia(commands.Cog):
         )
 
     @app_commands.command(
+        name="saldo",
+        description="mostra o saldo atual do usuário ou de outra pessoa.",
+    )
+    @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
+    @app_commands.describe(
+        usuario="usuário para verificar o saldo (opcional, padrão é você).",
+    )
+    async def saldo(
+        self,
+        interaction: discord.Interaction,
+        usuario: discord.Member | None = None,
+    ) -> None:
+        target_user = usuario if usuario is not None else interaction.user
+
+        if not isinstance(target_user, discord.Member):
+            await interaction.response.send_message(
+                "não foi possível obter informações do usuário.",
+                ephemeral=True,
+            )
+            return
+
+        balance = await self.database.get_balance(
+            guild_id=interaction.guild_id,
+            user_id=target_user.id,
+        )
+
+        if usuario is None:
+            embed = discord.Embed(
+                title="seu saldo",
+                description=f"R$ {balance:,}".replace(",", "."),
+                color=discord.Color.green(),
+            )
+            embed.set_thumbnail(url=interaction.user.avatar.url if interaction.user.avatar else "")
+        else:
+            embed = discord.Embed(
+                title=f"saldo de {target_user.display_name}",
+                description=f"R$ {balance:,}".replace(",", "."),
+                color=discord.Color.blurple(),
+            )
+            embed.set_thumbnail(url=target_user.avatar.url if target_user.avatar else "")
+
+        await interaction.response.send_message(embed=embed, ephemeral=True)
+
+    @app_commands.command(
         name="addreais",
         description="adiciona reais ao saldo de um usuário.",
     )
