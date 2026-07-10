@@ -419,4 +419,4 @@ async def setup(bot: commands.Bot):
         synced = await bot.tree.sync(guild=GUILD)
         print(f"✅ Cog confissões carregado. Slash syncados no servidor: {[cmd.name for cmd in synced]}")
     except Exception as e:
-        print(f"⚠️ Cog confissões carregou, mas falhou ao syncar slash commands: {type(e).__name__}: {e}"
+        print(f"⚠️ Cog confissões carregou, mas falhou ao syncar slash commands: {type(e).__name__}: {e}")
