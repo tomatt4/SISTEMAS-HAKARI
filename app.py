@@ -35,6 +35,7 @@ async def trocar_status():
     
         
 TOKEN = os.getenv("TOKEN")
+APPLICATION_ID = os.getenv("APPLICATION_ID")
 
 intents = discord.Intents.all()
 
