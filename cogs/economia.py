@@ -20,8 +20,8 @@ DAILY_BONUS_ROLE_IDS = {
     1524830563003793429,
 }
 
-MIN_TRANSACTION = 3
-MAX_TRANSACTION = 1_250_000
+MIN_TRANSACTION = 1
+MAX_TRANSACTION = 500_000_000_000_000
 DAILY_COOLDOWN_SECONDS = 24 * 60 * 60
 
 DATABASE_PATH = Path("data") / "economia.db"
@@ -433,7 +433,7 @@ class PixConfirmationView(discord.ui.View):
     @discord.ui.button(
         label="recusar",
         style=discord.ButtonStyle.red,
-        emoji="✖️",
+        emoji="❌",
     )
     async def refuse_pix(
         self,
