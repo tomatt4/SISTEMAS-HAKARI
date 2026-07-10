@@ -40,7 +40,7 @@ APPLICATION_ID = os.getenv("APPLICATION_ID")
 intents = discord.Intents.all()
 
 # Bot com suporte a prefixo e slash commands
-bot = commands.Bot(command_prefix=",", intents=intents)
+bot = commands.Bot(command_prefix=",", intents=intents, application_id=int(APPLICATION_ID))
 
 # Sistema anti-spam (erro 429)
 class RateLimitHandler:
