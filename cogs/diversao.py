@@ -412,5 +412,5 @@ class Confissoes(commands.Cog):
 
 
 async def setup(bot: commands.Bot):
-    await bot.add_cog(Diversao(bot))
+    await bot.add_cog(Confissoes(bot))
     print("✅ Cog de confissões carregado.")
