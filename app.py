@@ -157,6 +157,14 @@ async def main():
         print("❌ Variável APPLICATION_ID não encontrada.")
         return
 
+    print("TOKEN encontrado:", bool(TOKEN))
+    print("Tamanho do TOKEN:", len(TOKEN))
+    print("Partes separadas por ponto:", len(TOKEN.split(".")))
+    print("Tem espaço/quebra de linha:", any(c.isspace() for c in TOKEN))
+    print("Começa com 'Bot ':", TOKEN.startswith("Bot "))
+    print("Tem aspas externas:", TOKEN.startswith(("'", '"')) or TOKEN.endswith(("'", '"')))
+    print("APPLICATION_ID:", APPLICATION_ID)
+
     keep_alive(bot)
 
     async with bot:
