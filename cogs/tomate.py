@@ -9,25 +9,17 @@ cooldowns = {}
 bloquear_tomates = False
 bot_owner_id_cache = None
 
-BOT_OWNER_ID = {
-    1344736884089426022 # Mattzaddas
-}
 
 STAFF_ROLES = {
-    1500969290093039626,  # Gerente
-    1513653295061798922   # Staff
+    1504998108407398501
 }
 
 TARGET_PICK_ROLES = {
-    1490679537032495297,
-    1490782190064373983,
-    1514699980538118164
+    1524830563003793429,
+    1502738752106270831
 }
 
 REDUCED_COOLDOWN_ROLES = {
-    1490679537032495299,
-    1514687383474405588,
-    1490679537032495295,
     *TARGET_PICK_ROLES
 }
 
@@ -41,6 +33,10 @@ def has_role(member: discord.Member, roles: set[int]):
 
 def is_staff(member: discord.Member):
     return has_role(member, STAFF_ROLES)
+
+
+def is_owner(member: discord.Member):
+    return member.id == member.guild.owner_id
 
 
 def can_pick_target(member: discord.Member):
@@ -87,7 +83,7 @@ async def tomate_core(
                 seconds = int(remaining % 60)
 
                 await send(
-                    f"⏳ cooldown ativo. Espera **{minutes}m {seconds}s**"
+                    f"⏳ cooldown ativo. espere **{minutes}**m **{seconds}**s"
                 )
                 return
 
@@ -99,7 +95,7 @@ async def tomate_core(
             return
 
         messages = [
-            msg async for msg in channel.history(limit=50)
+            msg async for msg in channel.history(limit=5)
             if not msg.author.bot and msg.author.id == target_user.id
         ]
 
@@ -125,12 +121,12 @@ async def tomate_core(
         selected_msg = random.choice(messages)
         target = selected_msg.author
 
-    if isinstance(target, discord.Member) and is_staff(target):
+    if isinstance(target, discord.Member) and (is_staff(target) or is_owner(target)):
         try:
             await selected_msg.add_reaction("🍅")
 
             await send(
-                "eta porra taquei nos staffs / gerentes do servidor, vou tomar ban nao ne administraçao"
+                ""
             )
         except discord.Forbidden:
             await send("não tenho permissão pra reagir mensagens pô")
@@ -229,7 +225,7 @@ class Tomate(commands.Cog):
             await message.remove_reaction(payload.emoji, user)
 
             await channel.send(
-                f"sub5 {user.mention} tacando tomate no true mogger"
+                f"sub5 {user.mention} tacando tomatt no true mogger🤣🤣🤣"
             )
 
         except discord.Forbidden:
@@ -302,12 +298,12 @@ class Tomate(commands.Cog):
             )
             return
 
-        is_server_owner = interaction.user.id == guild.owner_id
+        is_server_owner = is_owner(interaction.user)
         is_application_owner = await is_bot_owner(self.bot, interaction.user.id == BOT_OWNER_ID)
 
         if not is_server_owner and not is_application_owner:
             await interaction.response.send_message(
-                "só o dono do servidor ou o dono do bot podem usar este comando.",
+                "só o dono do servidor pode usar este comando.",
                 ephemeral=True
             )
             return
