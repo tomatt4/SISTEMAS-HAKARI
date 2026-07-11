@@ -95,20 +95,18 @@ class TicketView(discord.ui.View):
             )
             return
 
-          embed = discord.Embed(
-            title=".",
-            description=(
-                "> <:1359841749643694234:1512948491524243558> enquanto espera seu suporte, descreva seu problema brevemente no ticket.\n\n"
+            embed = discord.Embed(
+                title=".",
+                description=(
+                    "> <:1359841749643694234:1512948491524243558> enquanto espera seu suporte, descreva seu problema brevemente no ticket.\n\n"
+                    "> <:1359841749643694234:1512948491524243558> **não** abra vários tickets ao mesmo tempo! seja paciente em esperar a administração."
+                ),
+                color=0xffffff
+            )
 
-                
-                "> <:1359841749643694234:1512948491524243558> **não** abra vários tickets ao mesmo tempo! seja paciente em esperar a administração."
-            ),
-            color=0xffffff
-        )
+            embed.set_image(url="https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c04a6e5c35ce96ee7ff5d9d794d03e5a&")
 
-        embed.set_image(url="https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c04a6e5c35ce96ee7ff5d9d794d03e5a&")
-
-        mention_text = interaction.user.mention
+            mention_text = interaction.user.mention
 
         if support_role:
             mention_text += f" {support_role.mention}"
