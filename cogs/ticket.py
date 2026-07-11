@@ -2,8 +2,8 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-TICKET_IMAGE = "https://i.postimg.cc/sgJg2gYD/image.jpg"
-SUPPORT_ROLE_ID = 1504998108407398501
+TICKET_IMAGE = "https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c04a6e5c35ce96ee7ff5d9d794d03e5a&"
+SUPPORT_ROLE_ID = 1513653295061798922, 1500969290093039626
 
 
 class TicketView(discord.ui.View):
@@ -95,25 +95,18 @@ class TicketView(discord.ui.View):
             )
             return
 
-        embed = discord.Embed(
+          embed = discord.Embed(
             title=".",
             description=(
-                "<:a_i0:1524879966796517416>\n"
-                "<:a_i0:1524879966796517416>⋆˙ <:a_i0:1524879966796517416> — ***boas vindas ao seu ticket! "
-                "enquanto aguarda a nossa "
-                "equipe staff, descreva brevemente o seu suporte desejado..‎***\n"
-                "<:a_i0:1524879966796517416>\n"
-                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***não mencione staffs repetidamente***\n"
-                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***seja paciente em esperar a equipe te atender***\n"
-                "<:a_i0:1524879966796517416>\n\n"
-                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416> "
-                "***bom atendimento**^^\n"
-                "<:a_i0:1524879966796517416>"
+                "> <:1359841749643694234:1512948491524243558> enquanto espera seu suporte, descreva seu problema brevemente no ticket.\n\n"
+
+                
+                "> <:1359841749643694234:1512948491524243558> **não** abra vários tickets ao mesmo tempo! seja paciente em esperar a administração."
             ),
             color=0xffffff
         )
 
-        embed.set_image(url="https://i.postimg.cc/MGv7qV15/download-(1).gif")
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c04a6e5c35ce96ee7ff5d9d794d03e5a&")
 
         mention_text = interaction.user.mention
 
@@ -167,7 +160,7 @@ class CloseTicketView(discord.ui.View):
         )
 
         embed.set_footer(
-            text="se tu quiser fechar ele agora é só rodar o mesmo comando e clicar em confirmar"
+            text="se tu quiser fechar ele, é só rodar o mesmo comando e clicar em confirmar"
         )
 
         await interaction.response.send_message(embed=embed, ephemeral=True)
@@ -185,17 +178,12 @@ class Tickets(commands.Cog):
         embed = discord.Embed(
             title=".",
             description=(
-                "<:a_i0:1524879966796517416>\n"
-                "<:a_i0:1524879966796517416>⋆˙ <:a_i0:1524879966796517416> — ***boas vindas ao nosso sistema de tickets, "
-                "aqui você pode solicitar suporte e"
-                "ajuda da nossa equipe staff.‎***\n"
-                "<:a_i0:1524879966796517416>\n"
-                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***abra um ticket para receber suporte***\n"
-                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416>— ***explique seu problema com calma e aguarde a equipe***\n"
-                "<:a_i0:1524879966796517416>\n\n"
-                "<:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416><:a_i0:1524879966796517416> "
-                "***estamos aqui para te ajudar***^^\n"
-                "<:a_i0:1524879966796517416>"
+                "> <:1359841749643694234:1512948491524243558> precisa de um help aí? clique no botão abaixo para abrir um ticket.\n\n"
+
+                
+                "> <:1359841749643694234:1512948491524243558> **não** abra vários tickets ao mesmo tempo! o limite é 1 ticket por usuário.\n\n"
+
+                "> <:seta:1512948491524243558> solicitar parceria **__NÃO É AQUI__.** https://discord.com/channels/1490679537019654294/1498055324073197689."
             ),
             color=0xffffff
         )
