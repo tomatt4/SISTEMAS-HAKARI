@@ -15,7 +15,7 @@ from discord.ext import commands
 # configurações
 # ============================================================
 
-ECONOMY_GUILD_ID = 1500231901397516340, 1490679537019654294
+ECONOMY_GUILD_ID = 1490679537019654294
 
 DAILY_BONUS_ROLE_IDS = {
     1502738752106270831,
