@@ -1,4 +1,5 @@
 import asyncio
+import os
 import random
 import sqlite3
 import time
@@ -26,7 +27,9 @@ MIN_TRANSACTION = 1
 MAX_TRANSACTION = 500_000_000_000_000
 DAILY_COOLDOWN_SECONDS = 24 * 60 * 60
 
-DATABASE_PATH = Path("data") / "economia.db"
+DATABASE_PATH = Path(
+    os.getenv("DATABASE_PATH", "data/economia.db")
+)
 
 # Configurações de empregos
 WORK_COOLDOWN_SECONDS = 15 * 60  # 15 minutos
@@ -83,6 +86,10 @@ class EconomyDatabase:
         self.lock = asyncio.Lock()
 
         self.database_path.parent.mkdir(parents=True, exist_ok=True)
+
+        print(f"[ECONOMIA] Banco usado: {self.database_path.resolve()}")
+        print(f"[ECONOMIA] Banco já existia: {self.database_path.exists()}")
+
         self._create_tables()
 
     def _connect(self) -> sqlite3.Connection:
