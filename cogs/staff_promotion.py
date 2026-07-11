@@ -38,19 +38,19 @@ class StaffPromotion(commands.Cog):
                 "role_name": "diretor"
             },
             1490679537032495302: {
-                "next_role": 1518394774414037042
+                "next_role": 1518394774414037042,
                 "points_needed": 50,
                 "role_name": "administrador"
             },
             1518394774414037042: {
-                "next_role": 1490679537032495303
+                "next_role": 1490679537032495303,
                 "points_needed": 70,
                 "role_name": "gerente"
             },
             1490679537032495303: {
-                "next_role": 1496282936331337789
-                "points_needed": 140
-                "role_name": "sub owner"
+                "next_role": 1496282936331337789,
+                "points_needed": 140,
+                "role_name": "sub owner",
                 "is_final": True
             }
         }
