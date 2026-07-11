@@ -753,7 +753,7 @@ class PixConfirmationView(discord.ui.View):
     @discord.ui.button(
         label="confirmar pix",
         style=discord.ButtonStyle.green,
-        emoji="✅",
+        emoji="<:check:1525566649384702023>",
     )
     async def confirm_pix(
         self,
@@ -762,7 +762,7 @@ class PixConfirmationView(discord.ui.View):
     ) -> None:
         if self.finished:
             await interaction.response.send_message(
-                "este pix já foi finalizado.",
+                "<:check:1525566649384702023> | este pix já foi finalizado.",
                 ephemeral=True,
             )
             return
@@ -783,14 +783,14 @@ class PixConfirmationView(discord.ui.View):
             embed = discord.Embed(
                 title="pix cancelado",
                 description=(
-                    f"{self.sender.mention} não possui mais saldo suficiente "
+                    f"<:negativobranco:1525565869407736029> | {self.sender.mention} não possui mais saldo suficiente "
                     "para concluir esta transferência."
                 ),
                 color=discord.Color.red(),
             )
             embed.add_field(
-                name="saldo atual",
-                value=f"R$ {sender_balance:,}".replace(",", "."),
+                name="<:carteira:1525566638685159484> | saldo atual",
+                value=f"<:1183268890109808682:1525559694075236373> | R$ {sender_balance:,}".replace(",", "."),
                 inline=False,
             )
 
@@ -804,18 +804,18 @@ class PixConfirmationView(discord.ui.View):
         embed = discord.Embed(
             title="pix realizado com sucesso",
             description=(
-                f"{self.sender.mention} enviou "
+                f"<:check:1525566649384702023> | {self.sender.mention} enviou "
                 f"**R$ {self.amount:,}** para {self.receiver.mention}."
             ).replace(",", "."),
             color=discord.Color.green(),
         )
         embed.add_field(
             name=f"saldo de {self.sender.display_name}",
-            value=f"R$ {sender_balance:,}".replace(",", "."),
+            value=f"<:1183268890109808682:1525559694075236373> | R$ {sender_balance:,}".replace(",", "."),
         )
         embed.add_field(
             name=f"saldo de {self.receiver.display_name}",
-            value=f"R$ {receiver_balance:,}".replace(",", "."),
+            value=f"<:1183268890109808682:1525559694075236373> | R$ {receiver_balance:,}".replace(",", "."),
         )
 
         await interaction.response.edit_message(
@@ -827,7 +827,7 @@ class PixConfirmationView(discord.ui.View):
     @discord.ui.button(
         label="recusar",
         style=discord.ButtonStyle.red,
-        emoji="❌",
+        emoji="<:negativobranco:1525565869407736029>",
     )
     async def refuse_pix(
         self,
@@ -847,7 +847,7 @@ class PixConfirmationView(discord.ui.View):
         embed = discord.Embed(
             title="pix recusado",
             description=(
-                f"{self.receiver.mention} recusou o pix de "
+                f"<:negativobranco:1525565869407736029> | {self.receiver.mention} recusou o pix de "
                 f"**R$ {self.amount:,}** enviado por {self.sender.mention}."
             ).replace(",", "."),
             color=discord.Color.red(),
@@ -872,7 +872,7 @@ class PixConfirmationView(discord.ui.View):
         embed = discord.Embed(
             title="pix expirado",
             description=(
-                "a confirmação não foi respondida dentro de 2 minutos. "
+                "<:negativobranco:1525565869407736029> | a confirmação não foi respondida dentro de 2 minutos. "
                 "nenhum valor foi transferido."
             ),
             color=discord.Color.red(),
@@ -994,11 +994,15 @@ class Economia(commands.Cog):
         await self.database.close()
 
     @staticmethod
-    def is_guild_owner(interaction: discord.Interaction) -> bool:
-        return (
-            interaction.guild is not None
-            and interaction.guild.owner_id == interaction.user.id
-        )
+    def has_specific_role(interaction: discord.Interaction) -> bool:
+        role_id = 1491090814254841886
+    
+        # Verifica se a interação foi em um servidor e se o usuário é um membro válido
+        if interaction.guild is not None and isinstance(interaction.user, discord.Member):
+        # Verifica se o ID do cargo está na lista de cargos do membro
+            return any(role.id == role_id for role in interaction.user.roles)
+        
+        return False
 
     @app_commands.command(
         name="saldo",
@@ -1089,9 +1093,9 @@ class Economia(commands.Cog):
         usuario: discord.Member,
         quantia: app_commands.Range[int, MIN_TRANSACTION, MAX_TRANSACTION],
     ) -> None:
-        if not self.is_guild_owner(interaction):
+        if not self.has_specific_role(interaction):
             await interaction.response.send_message(
-                "apenas o dono com posse do servidor pode usar este comando.",
+                "apenas usuários com o cargo de Dono podem usar este comando.",
                 ephemeral=True,
             )
             return
@@ -1188,10 +1192,10 @@ class Economia(commands.Cog):
 
         await interaction.response.send_message(
             (
-                f"você recebeu **R$ {amount:,}** no daily."
+                f"<:check:1525566649384702023> | você recebeu **R$ {amount:,}** no daily."
                 f"{bonus_text}\n"
-                f"seu saldo agora é **R$ {value:,}**.\n"
-                f"próximo daily: <t:{next_daily}:R>."
+                f"<:1183268890109808682:1525559694075236373> | seu saldo agora é **R$ {value:,}**.\n"
+                f"<:calendar:1525579207818608682> | próximo daily: <t:{next_daily}:R>."
             ).replace(",", "."),
         )
 
@@ -1215,14 +1219,14 @@ class Economia(commands.Cog):
 
         if usuario.id == interaction.user.id:
             await interaction.response.send_message(
-                "você não pode enviar um pix para si mesmo.",
+                "<:negativobranco:1525565869407736029> | você não pode enviar um pix para si mesmo.",
                 ephemeral=True,
             )
             return
 
         if usuario.bot:
             await interaction.response.send_message(
-                "você não pode enviar um pix para bots.",
+                "<:negativobranco:1525565869407736029> | você não pode enviar um pix para bots.",
                 ephemeral=True,
             )
             return
@@ -1235,7 +1239,7 @@ class Economia(commands.Cog):
         if sender_balance < quantia:
             await interaction.response.send_message(
                 (
-                    f"saldo insuficiente. você possui **R$ {sender_balance:,}**."
+                    f"<:negativobranco:1525565869407736029> | saldo insuficiente. você possui **R$ {sender_balance:,}**."
                 ).replace(",", "."),
                 ephemeral=True,
             )
@@ -1252,7 +1256,7 @@ class Economia(commands.Cog):
         embed = discord.Embed(
             title="confirmação de pix",
             description=(
-                f"{usuario.mention}, {interaction.user.mention} quer enviar "
+                f"<a:white_exclamation:1522707377835737139>| {interaction.user.mention} quer enviar "
                 f"**R$ {quantia:,}** para você.\n\n"
                 "confirme ou recuse usando os botões abaixo."
             ).replace(",", "."),
@@ -1286,7 +1290,7 @@ class Economia(commands.Cog):
     ) -> None:
         if not self.is_guild_owner(interaction):
             await interaction.response.send_message(
-                "apenas o dono com posse do servidor pode usar este comando.",
+                "apenas os donos podem usar este comando.",
                 ephemeral=True,
             )
             return
@@ -1300,8 +1304,8 @@ class Economia(commands.Cog):
         if not success:
             await interaction.response.send_message(
                 (
-                    f"{usuario.mention} não possui **R$ {quantia:,}**.\n"
-                    f"saldo atual: **R$ {new_balance:,}**."
+                    f"<:negativobranco:1525565869407736029> | {usuario.mention} não possui **R$ {quantia:,}**.\n"
+                    f"<:1183268890109808682:1525559694075236373> | saldo atual: **R$ {new_balance:,}**."
                 ).replace(",", "."),
                 ephemeral=True,
             )
@@ -1310,7 +1314,7 @@ class Economia(commands.Cog):
         await interaction.response.send_message(
             (
                 f"removi **R$ {quantia:,}** de {usuario.mention}.\n"
-                f"novo saldo: **R$ {new_balance:,}**."
+                f"<:1183268890109808682:1525559694075236373> | novo saldo: **R$ {new_balance:,}**."
             ).replace(",", "."),
             ephemeral=False,
         )
@@ -1331,7 +1335,7 @@ class Economia(commands.Cog):
 
         if job is not None:
             await interaction.response.send_message(
-                "você já possui um emprego! use `/demitir` para sair do atual.",
+                "<:negativobranco:1525565869407736029> | você já possui um emprego! use `/demitir` para sair do atual.",
                 ephemeral=True,
             )
             return
@@ -1381,7 +1385,7 @@ class Economia(commands.Cog):
 
         if job is None:
             await interaction.response.send_message(
-                "você não possui um emprego. use `/entrevista` para participar de uma.",
+                "<:negativobranco:1525565869407736029> | você não possui um emprego. use `/entrevista` para participar de uma.",
                 ephemeral=True,
             )
             return
@@ -1393,44 +1397,44 @@ class Economia(commands.Cog):
         }
 
         embed = discord.Embed(
-            title=f"informações de emprego",
+            title=f"<:indentify:1525579201262911629> | informações de emprego",
             description=f"{status_emoji.get(job['status'], '❓')} {job['job_name']}",
             color=discord.Color.blurple(),
         )
 
         embed.add_field(
-            name="salário mensal",
+            name="<:1183268890109808682:1525559694075236373> | salário mensal",
             value=f"R$ {job['salary']:,}".replace(",", "."),
             inline=True,
         )
 
         embed.add_field(
-            name="meta mensal",
+            name="<:student:1525566394245316638> | meta mensal",
             value=f"{job['work_count']}/{job['monthly_goal']} trabalhos",
             inline=True,
         )
 
         embed.add_field(
-            name="contratado em",
+            name="<:condecoracoes:1525566668238094428> | contratado em",
             value=f"<t:{job['hire_date']}:d>",
             inline=True,
         )
 
         embed.add_field(
-            name="próximo pagamento",
+            name="<:1183268890109808682:1525559694075236373> | próximo pagamento",
             value=f"<t:{job['next_payment_date']}:R>",
             inline=True,
         )
 
         if job["status"] == JobStatus.AFASTADO.value and job["suspension_end_date"]:
             embed.add_field(
-                name="volta ao trabalho",
+                name="<:indentify:1525579201262911629> | volta ao trabalho",
                 value=f"<t:{job['suspension_end_date']}:f>",
                 inline=True,
             )
 
         embed.add_field(
-            name="infrações",
+            name="<:clock:1525566652123447307> | infrações",
             value=f"{job['robbery_count']}/7",
             inline=True,
         )
@@ -1456,7 +1460,7 @@ class Economia(commands.Cog):
             )
             return
 
-        await interaction.response.send_message("você saiu do seu emprego.")
+        await interaction.response.send_message("<:student:1525566394245316638> | você saiu do seu emprego.")
 
 
 async def setup(bot: commands.Bot) -> None:
