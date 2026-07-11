@@ -2,7 +2,6 @@ import asyncio
 import os
 import random
 import time
-from datetime import datetime, timedelta
 from enum import Enum
 
 import asyncpg
@@ -137,6 +136,17 @@ class EconomyDatabase:
                         robbery_count INTEGER NOT NULL DEFAULT 0,
                         suspension_end_date BIGINT,
                         status TEXT NOT NULL DEFAULT 'ativo',
+                        PRIMARY KEY (guild_id, user_id)
+                    )
+                    """
+                )
+
+                await connection.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS interview_cooldowns (
+                        guild_id BIGINT NOT NULL,
+                        user_id BIGINT NOT NULL,
+                        retry_after BIGINT NOT NULL,
                         PRIMARY KEY (guild_id, user_id)
                     )
                     """
@@ -404,6 +414,82 @@ class EconomyDatabase:
                     int(new_sender_balance),
                     int(new_receiver_balance),
                 )
+
+    async def get_interview_cooldown(
+        self,
+        guild_id: int,
+        user_id: int,
+    ) -> int | None:
+        now = int(time.time())
+        pool = await self._get_pool()
+
+        async with pool.acquire() as connection:
+            retry_after = await connection.fetchval(
+                """
+                SELECT retry_after
+                FROM interview_cooldowns
+                WHERE guild_id = $1 AND user_id = $2
+                """,
+                guild_id,
+                user_id,
+            )
+
+            if retry_after is None:
+                return None
+
+            retry_after = int(retry_after)
+            if retry_after <= now:
+                await connection.execute(
+                    """
+                    DELETE FROM interview_cooldowns
+                    WHERE guild_id = $1 AND user_id = $2
+                    """,
+                    guild_id,
+                    user_id,
+                )
+                return None
+
+            return retry_after
+
+    async def set_interview_cooldown(
+        self,
+        guild_id: int,
+        user_id: int,
+    ) -> int:
+        retry_after = int(time.time()) + FAILED_INTERVIEW_COOLDOWN_SECONDS
+        pool = await self._get_pool()
+
+        async with pool.acquire() as connection:
+            await connection.execute(
+                """
+                INSERT INTO interview_cooldowns (guild_id, user_id, retry_after)
+                VALUES ($1, $2, $3)
+                ON CONFLICT (guild_id, user_id)
+                DO UPDATE SET retry_after = EXCLUDED.retry_after
+                """,
+                guild_id,
+                user_id,
+                retry_after,
+            )
+
+        return retry_after
+
+    async def clear_interview_cooldown(
+        self,
+        guild_id: int,
+        user_id: int,
+    ) -> None:
+        pool = await self._get_pool()
+
+        async with pool.acquire() as connection:
+            await connection.execute(
+                """
+                DELETE FROM interview_cooldowns
+                WHERE guild_id = $1 AND user_id = $2
+                """,
+                guild_id,
+                user_id,
+            )
 
     async def get_job(self, guild_id: int, user_id: int) -> dict | None:
         pool = await self._get_pool()
@@ -894,7 +980,16 @@ class JobSelectView(discord.ui.View):
         self.database = database
         self.guild_id = guild_id
         self.user_id = user_id
-        self.selected_job: JobData | None = None
+        self.finished = False
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != self.user_id:
+            await interaction.response.send_message(
+                "apenas quem iniciou a entrevista pode escolher a profissão.",
+                ephemeral=True,
+            )
+            return False
+        return True
 
     @discord.ui.select(
         placeholder="selecione uma profissão",
@@ -910,70 +1005,86 @@ class JobSelectView(discord.ui.View):
         interaction: discord.Interaction,
         select: discord.ui.Select,
     ) -> None:
-        job_name = select.values[0]
-        self.selected_job = JobData[job_name]
-
-        success = await self.database.hire_employee(
-            guild_id=self.guild_id,
-            user_id=self.user_id,
-            job_data=self.selected_job,
-        )
-
-        if not success:
+        if self.finished:
             await interaction.response.send_message(
-                "você já possui um emprego! use `/demitir` para sair do atual.",
+                "esta entrevista já foi finalizada.",
                 ephemeral=True,
             )
             return
 
-        # Simula a entrevista
-        approval_chance = self.selected_job.get_approval_chance()
-        interview_result = random.random() < approval_chance
+        self.finished = True
+        selected_job = JobData[select.values[0]]
+        approval_chance = selected_job.get_approval_chance()
+        approved = random.random() < approval_chance
 
-        if interview_result:
+        for item in self.children:
+            item.disabled = True
+
+        if approved:
+            hired = await self.database.hire_employee(
+                guild_id=self.guild_id,
+                user_id=self.user_id,
+                job_data=selected_job,
+            )
+
+            if not hired:
+                await interaction.response.edit_message(
+                    content="você já possui um emprego.",
+                    embed=None,
+                    view=self,
+                )
+                self.stop()
+                return
+
+            await self.database.clear_interview_cooldown(
+                self.guild_id,
+                self.user_id,
+            )
+
             embed = discord.Embed(
                 title="parabéns! você foi aprovado!",
-                description=f"você é agora um(a) **{self.selected_job.get_name()}**.",
+                description=f"você é agora um(a) **{selected_job.get_name()}**.",
                 color=discord.Color.green(),
             )
             embed.add_field(
                 name="salário mensal",
-                value=f"R$ {self.selected_job.get_salary():,}".replace(",", "."),
+                value=f"R$ {selected_job.get_salary():,}".replace(",", "."),
                 inline=True,
             )
             embed.add_field(
                 name="meta mensal",
-                value=f"{self.selected_job.get_monthly_goal()} trabalhos",
+                value=f"{selected_job.get_monthly_goal()} trabalhos",
                 inline=True,
             )
             embed.add_field(
                 name="próximo passo",
-                value="use `/trabalhar` para começar a ganhar dinheiro!",
+                value="use `/trabalhar` para começar!",
                 inline=False,
             )
-
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.edit_message(embed=embed, view=self)
         else:
-            # Remove o emprego
-            await self.database.fire_employee(self.guild_id, self.user_id)
-
+            retry_after = await self.database.set_interview_cooldown(
+                self.guild_id,
+                self.user_id,
+            )
             embed = discord.Embed(
                 title="reprovado na entrevista!",
-                description=f"você não foi aprovado para a posição de **{self.selected_job.get_name()}**.",
+                description=(
+                    f"você não foi aprovado para **{selected_job.get_name()}**."
+                ),
                 color=discord.Color.red(),
             )
             embed.add_field(
                 name="chance de aprovação",
                 value=f"{approval_chance * 100:.0f}%",
-                inline=False,
+                inline=True,
             )
             embed.add_field(
                 name="próxima tentativa",
-                value="você pode tentar novamente em 24 horas.",
-                inline=False,
+                value=f"<t:{retry_after}:R>",
+                inline=True,
             )
-
-            await interaction.response.send_message(embed=embed)
+            await interaction.response.edit_message(embed=embed, view=self)
 
         self.stop()
 
@@ -994,15 +1105,18 @@ class Economia(commands.Cog):
         await self.database.close()
 
     @staticmethod
-    def has_specific_role(interaction: discord.Interaction) -> bool:
-        role_id = 1491090814254841886
-    
-        # Verifica se a interação foi em um servidor e se o usuário é um membro válido
-        if interaction.guild is not None and isinstance(interaction.user, discord.Member):
-        # Verifica se o ID do cargo está na lista de cargos do membro
-            return any(role.id == role_id for role in interaction.user.roles)
-        
-        return False
+    def can_manage_economy(interaction: discord.Interaction) -> bool:
+        if interaction.guild is None:
+            return False
+
+        if interaction.user.id == interaction.guild.owner_id:
+            return True
+
+        if not isinstance(interaction.user, discord.Member):
+            return False
+
+        manager_role_id = 1491090814254841886
+        return any(role.id == manager_role_id for role in interaction.user.roles)
 
     @app_commands.command(
         name="saldo",
@@ -1093,9 +1207,9 @@ class Economia(commands.Cog):
         usuario: discord.Member,
         quantia: app_commands.Range[int, MIN_TRANSACTION, MAX_TRANSACTION],
     ) -> None:
-        if not self.has_specific_role(interaction):
+        if not self.can_manage_economy(interaction):
             await interaction.response.send_message(
-                "apenas usuários com o cargo de Dono podem usar este comando.",
+                "apenas o dono do servidor ou o cargo autorizado pode usar este comando.",
                 ephemeral=True,
             )
             return
@@ -1113,40 +1227,6 @@ class Economia(commands.Cog):
             ).replace(",", "."),
         )
 
-    @app_commands.command(
-        name="addreais",
-        description="adiciona reais ao saldo de um usuário.",
-    )
-    @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
-    @app_commands.describe(
-        usuario="usuário que receberá os reais.",
-        quantia="quantidade entre 1 e 500 trilhões reais.",
-    )
-    async def addreais(
-        self,
-        interaction: discord.Interaction,
-        usuario: discord.Member,
-        quantia: app_commands.Range[int, MIN_TRANSACTION, MAX_TRANSACTION],
-    ) -> None:
-        if not self.is_guild_owner(interaction):
-            await interaction.response.send_message(
-                "apenas o dono com posse do servidor pode usar este comando.",
-                ephemeral=True,
-            )
-            return
-
-        new_balance = await self.database.add_money(
-            guild_id=interaction.guild_id,
-            user_id=usuario.id,
-            amount=quantia,
-        )
-
-        await interaction.response.send_message(
-            (
-                f"adicionei **R$ {quantia:,}** para {usuario.mention}.\n"
-                f"novo saldo: **R$ {new_balance:,}**."
-            ).replace(",", "."),
-        )
 
     @app_commands.command(
         name="daily",
@@ -1206,7 +1286,7 @@ class Economia(commands.Cog):
     @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
     @app_commands.describe(
         usuario="usuário que receberá o pix.",
-        quantia="quantidade entre 3 e 500.000.000.000.000 reais.",
+        quantia="quantidade entre 1 e 500.000.000.000.000 reais.",
     )
     async def pix(
         self,
@@ -1288,9 +1368,9 @@ class Economia(commands.Cog):
         usuario: discord.Member,
         quantia: app_commands.Range[int, 1, MAX_TRANSACTION],
     ) -> None:
-        if not self.is_guild_owner(interaction):
+        if not self.can_manage_economy(interaction):
             await interaction.response.send_message(
-                "apenas os donos podem usar este comando.",
+                "apenas o dono do servidor ou o cargo autorizado pode usar este comando.",
                 ephemeral=True,
             )
             return
@@ -1336,6 +1416,17 @@ class Economia(commands.Cog):
         if job is not None:
             await interaction.response.send_message(
                 "<:negativobranco:1525565869407736029> | você já possui um emprego! use `/demitir` para sair do atual.",
+                ephemeral=True,
+            )
+            return
+
+        retry_after = await self.database.get_interview_cooldown(
+            interaction.guild_id,
+            interaction.user.id,
+        )
+        if retry_after is not None:
+            await interaction.response.send_message(
+                f"você poderá fazer outra entrevista <t:{retry_after}:R>.",
                 ephemeral=True,
             )
             return
@@ -1440,6 +1531,56 @@ class Economia(commands.Cog):
         )
 
         await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(
+        name="salario",
+        description="receba seu salário quando o ciclo mensal terminar.",
+    )
+    @app_commands.guilds(discord.Object(id=ECONOMY_GUILD_ID))
+    async def salario(self, interaction: discord.Interaction) -> None:
+        job = await self.database.get_job(
+            interaction.guild_id,
+            interaction.user.id,
+        )
+
+        if job is None:
+            await interaction.response.send_message(
+                "você não possui um emprego.",
+                ephemeral=True,
+            )
+            return
+
+        now = int(time.time())
+        if now < int(job["next_payment_date"]):
+            await interaction.response.send_message(
+                f"seu próximo pagamento estará disponível <t:{job['next_payment_date']}:R>.",
+                ephemeral=True,
+            )
+            return
+
+        previous_balance = await self.database.get_balance(
+            interaction.guild_id,
+            interaction.user.id,
+        )
+        paid, new_balance = await self.database.pay_salary(
+            interaction.guild_id,
+            interaction.user.id,
+        )
+
+        if not paid:
+            await interaction.response.send_message(
+                "não foi possível processar seu salário.",
+                ephemeral=True,
+            )
+            return
+
+        earned = new_balance - previous_balance
+        await interaction.response.send_message(
+            (
+                f"<:check:1525566649384702023> | salário recebido: **R$ {earned:,}**.\n"
+                f"<:1183268890109808682:1525559694075236373> | novo saldo: **R$ {new_balance:,}**."
+            ).replace(",", ".")
+        )
 
     @app_commands.command(
         name="demitir",
