@@ -3,7 +3,7 @@ from discord.ext import commands
 from discord import app_commands
 
 TICKET_IMAGE = "https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c04a6e5c35ce96ee7ff5d9d794d03e5a&"
-SUPPORT_ROLE_ID = 1513653295061798922, 1500969290093039626
+SUPPORT_ROLE_ID = None
 
 
 class TicketView(discord.ui.View):
@@ -71,7 +71,7 @@ class TicketView(discord.ui.View):
             channel = await guild.create_text_channel(
                 name=channel_name,
                 overwrites=overwrites,
-                topic=f"ID do usuário: {interaction.user.id}"
+                topic="comando **/fechar** pra fechar o ticket"
             )
 
         except discord.Forbidden:
