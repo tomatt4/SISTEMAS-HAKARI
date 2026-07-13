@@ -1,81 +1,219 @@
+import asyncio
+import os
+import time
+from enum import Enum
+
+import asyncpg
 import discord
 from discord.ext import commands
 from discord import app_commands
-import json
-import os
+
+
+# ============================================================
+# configurações
+# ============================================================
 
 CARGO_STAFF = 1500969290093039626
 CARGO_SECRETARIA = 1513653295061798922
 
+DATABASE_STAFF_PROMOTION = os.getenv("DATABASE_STAFF_PROMOTION", "").strip()
+
+if not DATABASE_STAFF_PROMOTION:
+    raise RuntimeError(
+        "A variável de ambiente DATABASE_STAFF_PROMOTION não foi configurada."
+    )
+
+
+# ============================================================
+# banco de dados
+# ============================================================
+
+class StaffPromotionDatabase:
+    def __init__(self, database_url: str):
+        self.database_url = database_url
+        self.pool: asyncpg.Pool | None = None
+        self.init_lock = asyncio.Lock()
+
+    async def initialize(self) -> None:
+        if self.pool is not None:
+            return
+
+        async with self.init_lock:
+            if self.pool is not None:
+                return
+
+            self.pool = await asyncpg.create_pool(
+                dsn=self.database_url,
+                min_size=1,
+                max_size=5,
+                command_timeout=30,
+            )
+
+            async with self.pool.acquire() as connection:
+                await connection.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS staff_promotion (
+                        user_id BIGINT PRIMARY KEY,
+                        points BIGINT NOT NULL DEFAULT 0 CHECK(points >= 0),
+                        last_updated BIGINT
+                    )
+                    """
+                )
+
+                total_records = await connection.fetchval(
+                    "SELECT COUNT(*) FROM staff_promotion"
+                )
+
+                database_name = await connection.fetchval(
+                    "SELECT current_database()"
+                )
+
+                print(f"[STAFF PROMOTION] PostgreSQL conectado: {database_name}")
+                print(f"[STAFF PROMOTION] Registros salvos: {total_records}")
+
+    async def close(self) -> None:
+        if self.pool is not None:
+            await self.pool.close()
+            self.pool = None
+
+    async def _get_pool(self) -> asyncpg.Pool:
+        await self.initialize()
+
+        if self.pool is None:
+            raise RuntimeError("O pool do PostgreSQL não foi inicializado.")
+
+        return self.pool
+
+    @staticmethod
+    async def _ensure_user(
+        connection: asyncpg.Connection,
+        user_id: int,
+    ) -> None:
+        await connection.execute(
+            """
+            INSERT INTO staff_promotion (user_id, points, last_updated)
+            VALUES ($1, 0, NULL)
+            ON CONFLICT (user_id) DO NOTHING
+            """,
+            user_id,
+        )
+
+    async def get_points(self, user_id: int) -> int:
+        pool = await self._get_pool()
+
+        async with pool.acquire() as connection:
+            async with connection.transaction():
+                await self._ensure_user(connection, user_id)
+
+                points = await connection.fetchval(
+                    """
+                    SELECT points
+                    FROM staff_promotion
+                    WHERE user_id = $1
+                    """,
+                    user_id,
+                )
+
+                return int(points) if points is not None else 0
+
+    async def set_points(self, user_id: int, points: int) -> None:
+        pool = await self._get_pool()
+        now = int(time.time())
+
+        async with pool.acquire() as connection:
+            async with connection.transaction():
+                await self._ensure_user(connection, user_id)
+
+                await connection.execute(
+                    """
+                    UPDATE staff_promotion
+                    SET points = $1, last_updated = $2
+                    WHERE user_id = $3
+                    """,
+                    max(0, points),
+                    now,
+                    user_id,
+                )
+
+    async def add_points(self, user_id: int, amount: int) -> int:
+        pool = await self._get_pool()
+        now = int(time.time())
+
+        async with pool.acquire() as connection:
+            async with connection.transaction():
+                await self._ensure_user(connection, user_id)
+
+                new_points = await connection.fetchval(
+                    """
+                    UPDATE staff_promotion
+                    SET points = points + $1, last_updated = $2
+                    WHERE user_id = $3
+                    RETURNING points
+                    """,
+                    amount,
+                    now,
+                    user_id,
+                )
+
+                return int(new_points) if new_points is not None else 0
+
+
+# ============================================================
+# cog
+# ============================================================
 
 class StaffPromotion(commands.Cog):
     """Sistema de promoção de staffs baseado em pontuação"""
 
     def __init__(self, bot):
         self.bot = bot
-        self.data_file = "staff_points.json"
-        self.load_data()
+        self.database = StaffPromotionDatabase(DATABASE_STAFF_PROMOTION)
 
         self.promotion_chains = {
             1490679537032495301: {
                 "next_role": 1519102905112858757,
                 "points_needed": 10,
-                "role_name": "moderador"
+                "role_name": "staff > moderador"
             },
             1519102905112858757: {
                 "next_role": 1490679537032495298,
                 "points_needed": 20,
-                "role_name": "supervisor"
+                "role_name": "moderador > supervisor"
             },
             1490679537032495298: {
                 "next_role": 1519102475246899341,
                 "points_needed": 30,
-                "role_name": "coordenador"
+                "role_name": "supervisor > coordenador"
             },
             1519102475246899341: {
                 "next_role": 1490679537032495302,
                 "points_needed": 40,
-                "role_name": "diretor"
+                "role_name": "coordenador > diretor"
             },
             1490679537032495302: {
                 "next_role": 1518394774414037042,
                 "points_needed": 50,
-                "role_name": "administrador"
+                "role_name": "diretor > administrador"
             },
             1518394774414037042: {
                 "next_role": 1490679537032495303,
+                "additional_roles": [1513653295061798922],
                 "points_needed": 70,
-                "role_name": "gerente"
+                "role_name": "administrador > gerente"
             },
             1490679537032495303: {
                 "next_role": 1496282936331337789,
                 "points_needed": 140,
-                "role_name": "sub owner",
+                "role_name": "gerente > sub owner",
                 "is_final": True
             }
         }
 
-    def load_data(self):
-        if os.path.exists(self.data_file):
-            with open(self.data_file, "r") as f:
-                self.points_data = json.load(f)
-        else:
-            self.points_data = {}
+    async def cog_load(self) -> None:
+        await self.database.initialize()
 
-    def save_data(self):
-        with open(self.data_file, "w") as f:
-            json.dump(self.points_data, f, indent=4)
-
-    def get_user_points(self, user_id: int) -> int:
-        return self.points_data.get(str(user_id), 0)
-
-    def set_user_points(self, user_id: int, points: int):
-        self.points_data[str(user_id)] = max(0, points)
-        self.save_data()
-
-    def add_points(self, user_id: int, amount: int):
-        current = self.get_user_points(user_id)
-        self.set_user_points(user_id, current + amount)
+    async def cog_unload(self) -> None:
+        await self.database.close()
 
     def get_user_roles_ids(self, member: discord.Member) -> list[int]:
         return [role.id for role in member.roles]
@@ -107,7 +245,7 @@ class StaffPromotion(commands.Cog):
         if current_role_id is None:
             return False
 
-        current_points = self.get_user_points(member.id)
+        current_points = await self.database.get_points(member.id)
         promotion_info = self.promotion_chains.get(current_role_id)
 
         if promotion_info.get("is_final"):
@@ -126,7 +264,14 @@ class StaffPromotion(commands.Cog):
                     await member.remove_roles(current_role)
                     await member.add_roles(next_role)
 
-                    self.set_user_points(member.id, 0)
+                    # Adicionar roles adicionais se existirem
+                    additional_roles = promotion_info.get("additional_roles", [])
+                    for role_id in additional_roles:
+                        role = member.guild.get_role(role_id)
+                        if role:
+                            await member.add_roles(role)
+
+                    await self.database.set_points(member.id, 0)
                     return True
 
             except Exception as e:
@@ -163,8 +308,8 @@ class StaffPromotion(commands.Cog):
             )
             return
 
-        self.add_points(staff.id, quantia)
-        new_points = self.get_user_points(staff.id)
+        await self.database.add_points(staff.id, quantia)
+        new_points = await self.database.get_points(staff.id)
 
         was_promoted = await self.check_and_promote(staff)
 
@@ -243,9 +388,9 @@ class StaffPromotion(commands.Cog):
             )
             return
 
-        current_points = self.get_user_points(staff.id)
-        self.add_points(staff.id, -abs(quantia))
-        new_points = self.get_user_points(staff.id)
+        current_points = await self.database.get_points(staff.id)
+        await self.database.add_points(staff.id, -abs(quantia))
+        new_points = await self.database.get_points(staff.id)
 
         current_role_id = self.get_highest_staff_role(staff)
 
@@ -312,7 +457,7 @@ class StaffPromotion(commands.Cog):
             )
             return
 
-        points = self.get_user_points(target.id)
+        points = await self.database.get_points(target.id)
         promotion_info = self.promotion_chains[current_role_id]
         role_name = promotion_info["role_name"]
 
@@ -371,7 +516,7 @@ class StaffPromotion(commands.Cog):
             )
             return
 
-        self.set_user_points(staff.id, 0)
+        await self.database.set_points(staff.id, 0)
 
         await interaction.response.send_message(
             f"🔄 pontos resetados\n"
