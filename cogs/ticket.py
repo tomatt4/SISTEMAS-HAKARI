@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-TICKET_IMAGE = "https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c04a6e5c35ce96ee7ff5d9d794d03e5a&"
+TICKET_IMAGE = "https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c"
 SUPPORT_ROLE_ID = 1512285548583190648
 
 
@@ -95,7 +95,6 @@ class TicketView(discord.ui.View):
             )
             return
 
-        # ← As linhas abaixo devem estar AQUI, fora do try/except!
         embed = discord.Embed(
             title=".",
             description=(
@@ -105,23 +104,9 @@ class TicketView(discord.ui.View):
             color=0xffffff
         )
 
-        embed.set_image(url="https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c04a6e5c35ce96ee7ff5d9d794d03e5a&")
+        embed.set_image(url="https://cdn.discordapp.com/attachments/1371703468879908978/1525624742596317354/file-00000000d6d4720ea48cb1e2df023032.png?ex=6a541043&is=6a52bec3&hm=a2086d1eebc16cc23f5ebd6d64670584c")
 
         mention_text = interaction.user.mention
-
-        if support_role:
-            mention_text += f" {support_role.mention}"
-
-        await channel.send(
-            content=mention_text,
-            embed=embed
-        )
-
-        await interaction.followup.send(
-            f"seu ticket foi criado: {channel.mention}",
-            ephemeral=True
-        )
-            mention_text = interaction.user.mention
 
         if support_role:
             mention_text += f" {support_role.mention}"
