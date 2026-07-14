@@ -240,7 +240,7 @@ class Tomate(commands.Cog):
     @app_commands.describe(
         alvo="Usuário que você quer tacar tomate"
     )
-    async def tomate_slash(
+    async def tomate(
         self,
         interaction: discord.Interaction,
         alvo: discord.Member | None = None
@@ -259,31 +259,11 @@ class Tomate(commands.Cog):
             alvo
         )
 
-    @commands.command(name="tomate")
-    async def tomate_prefix(
-        self,
-        ctx: commands.Context,
-        alvo: discord.Member | None = None
-    ):
-
-        if ctx.author.bot:
-            return
-
-        async def send(msg):
-            await ctx.send(msg)
-
-        await tomate_core(
-            ctx.channel,
-            ctx.author,
-            send,
-            alvo
-        )
-
     @app_commands.command(
         name="bloquear_tomates",
         description="Bloqueia tomates nas mensagens do dono do servidor e do dono do bot"
     )
-    async def bloquear_tomates_slash(
+    async def bloquear_tomates_cmd(
         self,
         interaction: discord.Interaction
     ):
