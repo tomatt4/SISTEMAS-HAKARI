@@ -169,7 +169,7 @@ class StaffPromotion(commands.Cog):
         self.bot = bot
         self.database = StaffPromotionDatabase(DATABASE_STAFF_PROMOTION)
 
-            self.promotion_chains = {
+        self.promotion_chains = {
             # 1. Staff (ID 1490679537032495301) -> Próximo: Moderador (ID 1519102905112858757)
             1490679537032495301: {
                 "next_role": 1519102905112858757,
