@@ -14,7 +14,7 @@ class AutoNickname(commands.Cog):
             return
 
         # Nome atual (apelido ou username)
-        nome_atual = member.nick or member.name
+        nome_atual = member.nick
 
         # Já possui o sufixo
         if nome_atual.endswith(SUFIXO):
