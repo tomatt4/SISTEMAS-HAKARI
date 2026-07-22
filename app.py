@@ -26,18 +26,6 @@ COGS_DIR = BASE_DIR / "cogs"
 
 
 # ============================================================
-# STATUS DO BOT
-# ============================================================
-
-STATUS_LIST = [
-    "🤟😛",
-    "HAKARI: V2.10.26",
-    "feito pelo Salvador",
-    f"latencia: {round(bot.latency * 1000)}ms"
-]
-
-
-# ============================================================
 # VALIDAÇÃO DAS VARIÁVEIS
 # ============================================================
 
@@ -256,15 +244,22 @@ bot = HakariBot()
 
 # ============================================================
 # STATUS ROTATIVO
-# ============================================================
 
 @tasks.loop(seconds=40)
 async def trocar_status() -> None:
     try:
+        # A lista fica aqui dentro para calcular a latência atual a cada 40s
+        status_atualizados = [
+            "🤟😛",
+            "HAKARI: V2.10.26",
+            "feito pelo Salvador",
+            f"latencia: {round(bot.latency * 1000)}ms"
+        ]
+
         await bot.change_presence(
             status=discord.Status.idle,
             activity=discord.CustomActivity(
-                name=random.choice(STATUS_LIST)
+                name=random.choice(status_atualizados)
             ),
         )
 
@@ -279,7 +274,7 @@ async def trocar_status() -> None:
             f"⚠️ Erro inesperado ao trocar status: "
             f"{type(error).__name__}: {error}",
             flush=True,
-        )
+
 
 
 @trocar_status.before_loop
