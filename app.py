@@ -274,6 +274,7 @@ async def trocar_status() -> None:
             f"⚠️ Erro inesperado ao trocar status: "
             f"{type(error).__name__}: {error}",
             flush=True,
+        )
 
 
 
