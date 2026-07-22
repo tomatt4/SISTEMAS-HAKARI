@@ -18,7 +18,7 @@ from keep_alive import keep_alive
 TOKEN = os.getenv("TOKEN", "").strip()
 APPLICATION_ID_TEXT = os.getenv("APPLICATION_ID", "").strip()
 
-GUILD_ID = 1490679537019654294
+GUILD_ID = 1500231901397516340
 COMMAND_PREFIX = ","
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -30,27 +30,17 @@ COGS_DIR = BASE_DIR / "cogs"
 # ============================================================
 
 STATUS_LIST = [
-    "AOOOOOOOOOOOOOOOOO POTÊNCIA | /help",
+    "hello",
     "hakari V2.10.25",
-    "feito por mattzaddas",
+    "feito pelo Salva",
     "meu prefixo é uma virgula ok",
     "six seven da silva bora bill",
     "pô man, as vezes cansa ser bot",
-    "sub5 ravi random querendo fazer gf com o True Mogger HAKARI 🤣🤣🤣",
-    "eu fico 24/7 com o uptime robot toda hora falando ""BORA TRABALHAR no meu http de monitoramento sabia",
-    "NÃO, ERRO 429 DE NOVO NÃO POR FAVOR DEUS😭😭😭😭😭😭😭😭😭",
     "porra um dia eu fui apagado por inteiro porque o matt quis mudar de python pra javascript, que merda em",
     "ok, pelo visto acabei de tomar um jumpscare do erro 429 e fiquei off por 6 dias.",
     "*+67 aura*",
-    "morri",
-    "EU ODEIO A PORRA DA FALTA DE COMMA NUMA SEPARAÇÃO DE STRINGS, ERRO DIABÓLICO",
-    "outro erro diabolico é a MERDA DA IDENTAÇÃO"
-]
-
-DISCORD_STATUS_LIST = [
-    discord.Status.online,
-    discord.Status.idle,
-    discord.Status.dnd,
+    f"latencia: {round(self.bot.latency * 1000)}ms"
+    "oi"
 ]
 
 
@@ -279,7 +269,7 @@ bot = HakariBot()
 async def trocar_status() -> None:
     try:
         await bot.change_presence(
-            status=random.choice(DISCORD_STATUS_LIST),
+            status=discord.Status.idle,
             activity=discord.CustomActivity(
                 name=random.choice(STATUS_LIST)
             ),
