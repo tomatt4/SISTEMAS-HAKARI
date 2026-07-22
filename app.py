@@ -31,7 +31,7 @@ COGS_DIR = BASE_DIR / "cogs"
 
 STATUS_LIST = [
     "hello",
-    "hakari V2.10.25",
+    "hakari V2.10.26",
     "feito pelo Salva",
     "meu prefixo é uma virgula ok",
     "six seven da silva bora bill",
@@ -39,7 +39,7 @@ STATUS_LIST = [
     "porra um dia eu fui apagado por inteiro porque o matt quis mudar de python pra javascript, que merda em",
     "ok, pelo visto acabei de tomar um jumpscare do erro 429 e fiquei off por 6 dias.",
     "*+67 aura*",
-    f"latencia: {round(self.bot.latency * 1000)}ms"
+    f"latencia: {round(bot.latency * 1000)}ms",
     "oi"
 ]
 
