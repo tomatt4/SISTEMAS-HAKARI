@@ -9,6 +9,9 @@ from discord.ext import commands
 BOOSTER_ROLE_ID = 1553817043076259911
 LOWER_ROLE_ID = 1553840737655988244
 UPPER_ROLE_ID = 1553842552237457510
+REPAIR_BELOW_ROLE_ID = 1553832823264116796
+REPAIR_ABOVE_ROLE_ID = 1553840828684963860
+MANAGED_ROLE_PREFIXES = ("família -", "cargo -")
 FAMILY_MEMBER_LIMIT = 15
 
 
@@ -236,8 +239,71 @@ class Boost(commands.Cog):
         )
         temporary_path.replace(self.storage_path)
 
+    async def repair_managed_roles(self, guild: discord.Guild) -> None:
+        below_role = guild.get_role(REPAIR_BELOW_ROLE_ID)
+        above_role = guild.get_role(REPAIR_ABOVE_ROLE_ID)
+        bot_member = guild.me
+        if below_role is None or above_role is None:
+            print(
+                f"Não foi possível verificar cargos gerenciados em {guild.name}: "
+                "cargo de referência não encontrado."
+            )
+            return
+        if bot_member is None or bot_member.top_role <= above_role:
+            print(
+                f"Não foi possível mover cargos gerenciados em {guild.name}: "
+                "o cargo do bot precisa estar acima do cargo de destino."
+            )
+            return
+
+        managed_roles = sorted(
+            (
+                role
+                for role in guild.roles
+                if role.id not in {REPAIR_BELOW_ROLE_ID, REPAIR_ABOVE_ROLE_ID}
+                and role.name.casefold().startswith(MANAGED_ROLE_PREFIXES)
+                and role.position < below_role.position
+            ),
+            key=lambda role: role.position,
+            reverse=True,
+        )
+
+        for role in managed_roles:
+            if role >= bot_member.top_role:
+                print(
+                    f"Não foi possível mover o cargo {role.name!r} em {guild.name}: "
+                    "ele está acima ou no mesmo nível do bot."
+                )
+                continue
+
+            above_role = guild.get_role(REPAIR_ABOVE_ROLE_ID)
+            if above_role is None:
+                break
+            target_position = above_role.position + 1
+            if role.position == target_position:
+                continue
+
+            try:
+                await role.edit(
+                    position=target_position,
+                    reason="Corrigindo a posição de um cargo de booster",
+                )
+            except discord.Forbidden:
+                print(
+                    f"Sem permissão para mover o cargo {role.name!r} em {guild.name}."
+                )
+            except discord.HTTPException as error:
+                print(
+                    f"Falha ao mover o cargo {role.name!r} em {guild.name}: {error}"
+                )
+
+    @commands.Cog.listener()
+    async def on_ready(self) -> None:
+        for guild in self.bot.guilds:
+            await self.repair_managed_roles(guild)
+
     async def create_managed_role(
-        self, guild: discord.Guild, member: discord.Member
+        self, guild: discord.Guild, member: discord.Member, name_prefix: str
     ) -> discord.Role:
         lower_role = guild.get_role(LOWER_ROLE_ID)
         upper_role = guild.get_role(UPPER_ROLE_ID)
@@ -252,7 +318,7 @@ class Boost(commands.Cog):
             )
 
         role = await guild.create_role(
-            name=f"família - {member.display_name}"[:100],
+            name=f"{name_prefix} - {member.display_name}"[:100],
             reason=f"Cargo de booster criado para {member}",
         )
         try:
@@ -260,15 +326,20 @@ class Boost(commands.Cog):
                 position=lower_role.position + 1,
                 reason="Posicionando o cargo de booster entre os cargos de referência",
             )
+            await self.repair_managed_roles(guild)
         except Exception:
             await role.delete(reason="Não foi possível posicionar o cargo de booster")
             raise
         return role
 
     async def create_assigned_role(
-        self, guild: discord.Guild, member: discord.Member, reason: str
+        self,
+        guild: discord.Guild,
+        member: discord.Member,
+        reason: str,
+        name_prefix: str,
     ) -> discord.Role:
-        role = await self.create_managed_role(guild, member)
+        role = await self.create_managed_role(guild, member, name_prefix)
         try:
             await member.add_roles(role, reason=reason)
         except Exception:
@@ -446,6 +517,22 @@ class Boost(commands.Cog):
         embed.set_footer(text=f"Família de {guild.get_member(owner_id) or owner_id}")
         return embed
 
+    def personal_role_embed(
+        self, guild: discord.Guild, owner_id: int, role: discord.Role
+    ) -> discord.Embed:
+        embed = discord.Embed(
+            title="Gerenciar cargo personalizado",
+            description=(
+                f"Cargo: {role.mention}\n"
+                f"Cor: `#{role.color.value:06X}`"
+            ),
+            color=role.color if role.color.value else discord.Color.blurple(),
+        )
+        embed.set_footer(
+            text=f"Cargo de {guild.get_member(owner_id) or owner_id}"
+        )
+        return embed
+
     @commands.command(name="familia")
     async def family_command(self, ctx: commands.Context) -> None:
         if ctx.guild is None or not isinstance(ctx.author, discord.Member):
@@ -463,7 +550,10 @@ class Boost(commands.Cog):
 
         try:
             role = await self.create_assigned_role(
-                ctx.guild, ctx.author, "Cargo da família do booster"
+                ctx.guild,
+                ctx.author,
+                "Cargo da família do booster",
+                "família",
             )
         except ValueError as error:
             return await ctx.send(str(error))
@@ -497,7 +587,10 @@ class Boost(commands.Cog):
         if role is None:
             try:
                 role = await self.create_assigned_role(
-                    ctx.guild, ctx.author, "Cargo personalizado do booster"
+                    ctx.guild,
+                    ctx.author,
+                    "Cargo personalizado do booster",
+                    "cargo",
                 )
             except ValueError as error:
                 return await ctx.send(str(error))
@@ -512,7 +605,7 @@ class Boost(commands.Cog):
             self.bot.add_view(self.personal_view(ctx.guild.id, ctx.author.id))
 
         await ctx.send(
-            f"Seu cargo personalizado: {role.mention}. Clique para editar o nome e a cor.",
+            embed=self.personal_role_embed(ctx.guild, ctx.author.id, role),
             view=self.personal_view(ctx.guild.id, ctx.author.id),
         )
 
