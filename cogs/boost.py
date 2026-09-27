@@ -1,10 +1,14 @@
+import asyncio
+from io import BytesIO
 import json
 import os
 import re
 from pathlib import Path
 
+import aiohttp
 import asyncpg
 import discord
+from PIL import Image, UnidentifiedImageError
 from discord.ext import commands
 
 
@@ -99,6 +103,74 @@ class RoleEditModal(discord.ui.Modal):
 
         await interaction.response.send_message(
             f"Cargo atualizado para **{role.name}**.", ephemeral=True
+        )
+
+
+class RoleIconModal(discord.ui.Modal):
+    def __init__(self, cog, owner_id: int, role_id: int):
+        self.cog = cog
+        self.owner_id = owner_id
+        self.role_id = role_id
+        super().__init__(
+            title="Editar ícone do cargo",
+            custom_id=f"boost:icon:{owner_id}:{role_id}",
+        )
+        self.emoji_input = discord.ui.TextInput(
+            label="Emoji",
+            placeholder="Cole um emoji Unicode ou <:emoji:id>",
+            max_length=100,
+            required=True,
+        )
+        self.add_item(self.emoji_input)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != self.owner_id:
+            return await interaction.response.send_message(
+                "Esse formulário pertence a outra pessoa.", ephemeral=True
+            )
+        if not self.cog.is_booster(interaction.user):
+            return await interaction.response.send_message(
+                "Este comando é exclusivo para boosters.", ephemeral=True
+            )
+
+        role = interaction.guild.get_role(self.role_id)
+        if role is None:
+            return await interaction.response.send_message(
+                "Não encontrei esse cargo no servidor.", ephemeral=True
+            )
+
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            icon_png = await self.cog.emoji_to_png(self.emoji_input.value.strip())
+            await role.edit(
+                display_icon=icon_png,
+                reason=f"Ícone personalizado solicitado por {interaction.user}",
+            )
+        except ValueError as error:
+            return await interaction.followup.send(str(error), ephemeral=True)
+        except (aiohttp.ClientError, asyncio.TimeoutError):
+            return await interaction.followup.send(
+                "Não consegui baixar a imagem do emoji. Tente novamente.",
+                ephemeral=True,
+            )
+        except (UnidentifiedImageError, OSError):
+            return await interaction.followup.send(
+                "A imagem do emoji não pôde ser convertida para PNG.",
+                ephemeral=True,
+            )
+        except discord.Forbidden:
+            return await interaction.followup.send(
+                "Não tenho permissão para editar esse cargo. Confira também se o servidor permite ícones de cargos.",
+                ephemeral=True,
+            )
+        except discord.HTTPException:
+            return await interaction.followup.send(
+                "O Discord não aceitou o ícone. Verifique se o servidor permite ícones de cargos e tente outro emoji.",
+                ephemeral=True,
+            )
+
+        await interaction.followup.send(
+            f"Ícone do cargo **{role.name}** atualizado.", ephemeral=True
         )
 
 
@@ -502,6 +574,7 @@ class Boost(commands.Cog):
         view = discord.ui.View(timeout=None)
         buttons = (
             ("Editar cargo", discord.ButtonStyle.primary, "edit"),
+            ("Editar ícone", discord.ButtonStyle.secondary, "icon"),
             ("Criar call", discord.ButtonStyle.success, "voice"),
             ("Adicionar membros", discord.ButtonStyle.secondary, "add"),
             ("Remover membros", discord.ButtonStyle.secondary, "remove"),
@@ -535,7 +608,61 @@ class Boost(commands.Cog):
         )
         button.callback = self._personal_edit_callback(guild_id, owner_id)
         view.add_item(button)
+        icon_button = discord.ui.Button(
+            label="Editar ícone",
+            style=discord.ButtonStyle.secondary,
+            custom_id=f"boost:personal:icon:{guild_id}:{owner_id}",
+        )
+        icon_button.callback = self._personal_icon_callback(guild_id, owner_id)
+        view.add_item(icon_button)
         return view
+
+    async def emoji_to_png(self, emoji_text: str) -> bytes:
+        custom_emoji = re.fullmatch(
+            r"<(?P<animated>a?):[A-Za-z0-9_]{2,32}:(?P<id>\d{15,22})>",
+            emoji_text,
+        )
+        if custom_emoji:
+            emoji_id = custom_emoji.group("id")
+            extension = "gif" if custom_emoji.group("animated") else "png"
+            url = (
+                f"https://cdn.discordapp.com/emojis/{emoji_id}.{extension}?size=128"
+            )
+        else:
+            if not emoji_text or len(emoji_text) > 16 or emoji_text.isspace():
+                raise ValueError(
+                    "Envie um único emoji Unicode ou emoji personalizado do Discord."
+                )
+            codepoints = "-".join(
+                f"{ord(character):x}"
+                for character in emoji_text
+                if ord(character) not in {0xFE0E, 0xFE0F}
+            )
+            if not codepoints:
+                raise ValueError("Não consegui identificar esse emoji.")
+            url = (
+                "https://cdn.jsdelivr.net/gh/jdecked/twemoji@latest/"
+                f"assets/72x72/{codepoints}.png"
+            )
+
+        timeout = aiohttp.ClientTimeout(total=15)
+        async with aiohttp.ClientSession(timeout=timeout) as session:
+            async with session.get(url) as response:
+                if response.status == 404:
+                    raise ValueError("Não encontrei a imagem desse emoji.")
+                if response.status != 200:
+                    raise ValueError("Não consegui baixar a imagem desse emoji.")
+                image_data = await response.read()
+
+        if len(image_data) > 8 * 1024 * 1024:
+            raise ValueError("A imagem do emoji é grande demais.")
+
+        with Image.open(BytesIO(image_data)) as source:
+            image = source.convert("RGBA")
+            image.thumbnail((64, 64), Image.Resampling.LANCZOS)
+            output = BytesIO()
+            image.save(output, format="PNG", optimize=True)
+            return output.getvalue()
 
     def _family_callback(self, action: str, guild_id: int, owner_id: int):
         async def callback(interaction: discord.Interaction) -> None:
@@ -568,6 +695,10 @@ class Boost(commands.Cog):
             if action == "edit":
                 return await interaction.response.send_modal(
                     RoleEditModal(self, owner_id, role.id, family=True)
+                )
+            if action == "icon":
+                return await interaction.response.send_modal(
+                    RoleIconModal(self, owner_id, role.id)
                 )
             if action in {"add", "remove"}:
                 select_view = discord.ui.View(timeout=180)
@@ -663,6 +794,33 @@ class Boost(commands.Cog):
                 )
             await interaction.response.send_modal(
                 RoleEditModal(self, owner_id, role.id, family=False)
+            )
+
+        return callback
+
+    def _personal_icon_callback(self, guild_id: int, owner_id: int):
+        async def callback(interaction: discord.Interaction) -> None:
+            if interaction.user.id != owner_id:
+                return await interaction.response.send_message(
+                    "Esse painel pertence a outra pessoa.", ephemeral=True
+                )
+            if not self.is_booster(interaction.user):
+                return await interaction.response.send_message(
+                    "Este comando é exclusivo para boosters.", ephemeral=True
+                )
+            if interaction.guild_id != guild_id:
+                return await interaction.response.send_message(
+                    "Esse painel não pertence a este servidor.", ephemeral=True
+                )
+            role_id = self.personal_roles.get(self.key(guild_id, owner_id))
+            role = interaction.guild.get_role(role_id) if role_id else None
+            if role is None:
+                return await interaction.response.send_message(
+                    "Não encontrei seu cargo personalizado. Use `,cargo` novamente.",
+                    ephemeral=True,
+                )
+            await interaction.response.send_modal(
+                RoleIconModal(self, owner_id, role.id)
             )
 
         return callback

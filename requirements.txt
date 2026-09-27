@@ -2,3 +2,5 @@ discord.py==2.7.1
 python-dotenv
 flask
 asyncpg
+aiohttp
+Pillow
