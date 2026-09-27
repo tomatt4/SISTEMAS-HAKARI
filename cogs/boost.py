@@ -1,7 +1,9 @@
 import json
+import os
 import re
 from pathlib import Path
 
+import asyncpg
 import discord
 from discord.ext import commands
 
@@ -10,7 +12,7 @@ BOOSTER_ROLE_ID = 1553817043076259911
 ROLE_POSITION_UPPER_ID = 1553842552237457510
 ROLE_POSITION_LOWER_ID = 1553840828684963860
 REPAIR_BELOW_ROLE_ID = 1553832823264116796
-MANAGED_ROLE_PREFIXES = ("família -", "cargo -")
+MANAGED_ROLE_PREFIXES = ("família -", "familia -", "cargo -")
 FAMILY_MEMBER_LIMIT = 15
 
 
@@ -191,6 +193,7 @@ class Boost(commands.Cog):
         self.storage_path = Path(__file__).resolve().parent.parent / "data" / "boost.json"
         self.families: dict[str, dict] = {}
         self.personal_roles: dict[str, int] = {}
+        self.pool: asyncpg.Pool | None = None
 
     async def cog_load(self) -> None:
         if self.storage_path.exists():
@@ -201,12 +204,110 @@ class Boost(commands.Cog):
             except (OSError, json.JSONDecodeError) as error:
                 print(f"Não foi possível carregar os dados do boost: {error}")
 
+        database_url = os.getenv("DATABASE") or os.getenv("DATABASE_URL")
+        if not database_url:
+            print("NeonDB indisponível para o cog boost: variável DATABASE não configurada.")
+            return
+
+        try:
+            self.pool = await asyncpg.create_pool(
+                dsn=database_url,
+                ssl="require",
+                min_size=1,
+                max_size=5,
+                command_timeout=20,
+            )
+            await self.pool.execute(
+                """
+                CREATE TABLE IF NOT EXISTS boost_role_owners (
+                    guild_id BIGINT NOT NULL,
+                    user_id BIGINT NOT NULL,
+                    family_role_id BIGINT,
+                    personal_role_id BIGINT,
+                    voice_channel_id BIGINT,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (guild_id, user_id)
+                )
+                """
+            )
+            await self.migrate_local_data()
+            await self.load_database_data()
+        except Exception as error:
+            if self.pool is not None:
+                await self.pool.close()
+                self.pool = None
+            print(
+                "Não foi possível inicializar o NeonDB no cog boost: "
+                f"{type(error).__name__}. Confira a variável DATABASE e os logs do Render."
+            )
+            return
+
         for key in self.families:
             guild_id, owner_id = map(int, key.split(":"))
             self.bot.add_view(self.family_view(guild_id, owner_id))
         for key in self.personal_roles:
             guild_id, owner_id = map(int, key.split(":"))
             self.bot.add_view(self.personal_view(guild_id, owner_id))
+
+    async def cog_unload(self) -> None:
+        if self.pool is not None:
+            await self.pool.close()
+
+    async def migrate_local_data(self) -> None:
+        if self.pool is None:
+            return
+
+        for key in self.families.keys() | self.personal_roles.keys():
+            guild_id, owner_id = map(int, key.split(":"))
+            family = self.families.get(key, {})
+            await self.pool.execute(
+                """
+                INSERT INTO boost_role_owners (
+                    guild_id, user_id, family_role_id, personal_role_id,
+                    voice_channel_id
+                )
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (guild_id, user_id) DO UPDATE SET
+                    family_role_id = COALESCE(
+                        boost_role_owners.family_role_id, EXCLUDED.family_role_id
+                    ),
+                    personal_role_id = COALESCE(
+                        boost_role_owners.personal_role_id, EXCLUDED.personal_role_id
+                    ),
+                    voice_channel_id = COALESCE(
+                        boost_role_owners.voice_channel_id, EXCLUDED.voice_channel_id
+                    ),
+                    updated_at = NOW()
+                """,
+                guild_id,
+                owner_id,
+                family.get("role_id"),
+                self.personal_roles.get(key),
+                family.get("voice_channel_id"),
+            )
+
+    async def load_database_data(self) -> None:
+        if self.pool is None:
+            return
+
+        self.families.clear()
+        self.personal_roles.clear()
+        rows = await self.pool.fetch(
+            """
+            SELECT guild_id, user_id, family_role_id, personal_role_id,
+                   voice_channel_id
+            FROM boost_role_owners
+            """
+        )
+        for row in rows:
+            key = self.key(row["guild_id"], row["user_id"])
+            if row["family_role_id"] is not None:
+                self.families[key] = {
+                    "role_id": row["family_role_id"],
+                    "voice_channel_id": row["voice_channel_id"],
+                }
+            if row["personal_role_id"] is not None:
+                self.personal_roles[key] = row["personal_role_id"]
 
     def key(self, guild_id: int, owner_id: int) -> str:
         return f"{guild_id}:{owner_id}"
@@ -226,17 +327,54 @@ class Boost(commands.Cog):
         )
 
     async def save(self) -> None:
-        self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-        temporary_path = self.storage_path.with_suffix(".tmp")
-        temporary_path.write_text(
-            json.dumps(
-                {"families": self.families, "personal_roles": self.personal_roles},
-                ensure_ascii=False,
-                indent=2,
-            ),
-            encoding="utf-8",
-        )
-        temporary_path.replace(self.storage_path)
+        if self.pool is None:
+            raise RuntimeError("NeonDB não está conectado.")
+
+        records = []
+        for key in self.families.keys() | self.personal_roles.keys():
+            guild_id, owner_id = map(int, key.split(":"))
+            family = self.families.get(key, {})
+            records.append(
+                (
+                    guild_id,
+                    owner_id,
+                    family.get("role_id"),
+                    self.personal_roles.get(key),
+                    family.get("voice_channel_id"),
+                )
+            )
+
+        if records:
+            await self.pool.executemany(
+                """
+                INSERT INTO boost_role_owners (
+                    guild_id, user_id, family_role_id, personal_role_id,
+                    voice_channel_id
+                )
+                VALUES ($1, $2, $3, $4, $5)
+                ON CONFLICT (guild_id, user_id) DO UPDATE SET
+                    family_role_id = EXCLUDED.family_role_id,
+                    personal_role_id = EXCLUDED.personal_role_id,
+                    voice_channel_id = EXCLUDED.voice_channel_id,
+                    updated_at = NOW()
+                """,
+                records,
+            )
+
+        try:
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary_path = self.storage_path.with_suffix(".tmp")
+            temporary_path.write_text(
+                json.dumps(
+                    {"families": self.families, "personal_roles": self.personal_roles},
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            temporary_path.replace(self.storage_path)
+        except OSError as error:
+            print(f"Não foi possível atualizar o backup local do boost: {error}")
 
     async def repair_managed_roles(self, guild: discord.Guild) -> None:
         trigger_role = guild.get_role(REPAIR_BELOW_ROLE_ID)
@@ -376,6 +514,16 @@ class Boost(commands.Cog):
             )
             button.callback = self._family_callback(action, guild_id, owner_id)
             view.add_item(button)
+        if self.personal_roles.get(self.key(guild_id, owner_id)):
+            personal_button = discord.ui.Button(
+                label="Editar cargo personalizado",
+                style=discord.ButtonStyle.primary,
+                custom_id=f"boost:family:personal-edit:{guild_id}:{owner_id}",
+            )
+            personal_button.callback = self._personal_edit_callback(
+                guild_id, owner_id
+            )
+            view.add_item(personal_button)
         return view
 
     def personal_view(self, guild_id: int, owner_id: int) -> discord.ui.View:
@@ -471,7 +619,17 @@ class Boost(commands.Cog):
                 )
 
             state["voice_channel_id"] = voice_channel.id
-            await self.save()
+            try:
+                await self.save()
+            except Exception:
+                await interaction.message.edit(
+                    embed=self.family_embed(interaction.guild, owner_id, state),
+                    view=self.family_view(guild_id, owner_id),
+                )
+                return await interaction.followup.send(
+                    f"Call criada: {voice_channel.mention}, mas não consegui salvar os dados no NeonDB.",
+                    ephemeral=True,
+                )
             await interaction.message.edit(
                 embed=self.family_embed(interaction.guild, owner_id, state),
                 view=self.family_view(guild_id, owner_id),
@@ -524,6 +682,17 @@ class Boost(commands.Cog):
             ),
             color=role.color if role and role.color.value else discord.Color.blurple(),
         )
+        personal_role_id = self.personal_roles.get(self.key(guild.id, owner_id))
+        personal_role = guild.get_role(personal_role_id) if personal_role_id else None
+        if personal_role is not None:
+            embed.add_field(
+                name="Cargo personalizado",
+                value=(
+                    f"{personal_role.mention}\n"
+                    f"Cor: `#{personal_role.color.value:06X}`"
+                ),
+                inline=False,
+            )
         embed.set_footer(text=f"Família de {guild.get_member(owner_id) or owner_id}")
         return embed
 
@@ -549,10 +718,37 @@ class Boost(commands.Cog):
             return await ctx.send("Este comando só pode ser usado em um servidor.")
         if not self.is_booster(ctx.author):
             return await ctx.send("Este comando é exclusivo para boosters.")
+        if self.pool is None:
+            return await ctx.send(
+                "Não consegui conectar ao NeonDB. Confira a variável `DATABASE` no Render."
+            )
 
         key = self.key(ctx.guild.id, ctx.author.id)
         state = self.families.get(key)
-        if state and ctx.guild.get_role(state["role_id"]):
+        role = ctx.guild.get_role(state["role_id"]) if state else None
+        if role is None:
+            role = next(
+                (
+                    member_role
+                    for member_role in ctx.author.roles
+                    if member_role.name.casefold().startswith(("família -", "familia -"))
+                ),
+                None,
+            )
+            if role is not None:
+                self.families[key] = {
+                    "role_id": role.id,
+                    "voice_channel_id": None,
+                }
+                try:
+                    await self.save()
+                except Exception:
+                    return await ctx.send(
+                        "Encontrei seu cargo de família, mas não consegui registrá-lo no NeonDB."
+                    )
+
+        state = self.families.get(key)
+        if role is not None:
             return await ctx.send(
                 embed=self.family_embed(ctx.guild, ctx.author.id, state),
                 view=self.family_view(ctx.guild.id, ctx.author.id),
@@ -575,7 +771,17 @@ class Boost(commands.Cog):
             return await ctx.send("O Discord não conseguiu criar o cargo. Tente novamente.")
 
         self.families[key] = {"role_id": role.id, "voice_channel_id": None}
-        await self.save()
+        try:
+            await self.save()
+        except Exception:
+            self.families.pop(key, None)
+            try:
+                await role.delete(reason="Falha ao registrar a família no NeonDB")
+            except discord.HTTPException:
+                pass
+            return await ctx.send(
+                "Não consegui salvar sua família no NeonDB; o cargo criado foi removido."
+            )
         self.bot.add_view(self.family_view(ctx.guild.id, ctx.author.id))
         state = self.families[key]
         await ctx.send(
@@ -590,10 +796,32 @@ class Boost(commands.Cog):
             return await ctx.send("Este comando só pode ser usado em um servidor.")
         if not self.is_booster(ctx.author):
             return await ctx.send("Este comando é exclusivo para boosters.")
+        if self.pool is None:
+            return await ctx.send(
+                "Não consegui conectar ao NeonDB. Confira a variável `DATABASE` no Render."
+            )
 
         key = self.key(ctx.guild.id, ctx.author.id)
         role_id = self.personal_roles.get(key)
         role = ctx.guild.get_role(role_id) if role_id else None
+        if role is None:
+            role = next(
+                (
+                    member_role
+                    for member_role in ctx.author.roles
+                    if member_role.name.casefold().startswith("cargo -")
+                ),
+                None,
+            )
+            if role is not None:
+                self.personal_roles[key] = role.id
+                try:
+                    await self.save()
+                except Exception:
+                    return await ctx.send(
+                        "Encontrei seu cargo personalizado, mas não consegui registrá-lo no NeonDB."
+                    )
+
         if role is None:
             try:
                 role = await self.create_assigned_role(
@@ -611,8 +839,26 @@ class Boost(commands.Cog):
             except discord.HTTPException:
                 return await ctx.send("O Discord não conseguiu criar o cargo. Tente novamente.")
             self.personal_roles[key] = role.id
-            await self.save()
+            try:
+                await self.save()
+            except Exception:
+                self.personal_roles.pop(key, None)
+                try:
+                    await role.delete(reason="Falha ao registrar cargo pessoal no NeonDB")
+                except discord.HTTPException:
+                    pass
+                return await ctx.send(
+                    "Não consegui salvar seu cargo no NeonDB; o cargo criado foi removido."
+                )
             self.bot.add_view(self.personal_view(ctx.guild.id, ctx.author.id))
+
+        family = self.families.get(key)
+        family_role = ctx.guild.get_role(family["role_id"]) if family else None
+        if family_role is not None:
+            return await ctx.send(
+                embed=self.family_embed(ctx.guild, ctx.author.id, family),
+                view=self.family_view(ctx.guild.id, ctx.author.id),
+            )
 
         await ctx.send(
             embed=self.personal_role_embed(ctx.guild, ctx.author.id, role),
