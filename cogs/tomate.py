@@ -47,7 +47,7 @@ async def is_bot_owner(bot: commands.Bot, user_id: int):
 
     if bot_owner_id_cache is None:
         app = await bot.application_info()
-        bot_owner_id_cache = app.owner.id
+        bot_owner_id_cache = 1543385262984396852
 
     return user_id == bot_owner_id_cache
 
