@@ -286,7 +286,7 @@ class Tomate(commands.Cog):
             )
 
             await channel.send(
-                f"sub5 {user.mention} tacando tomatt no true mogger🤣🤣🤣"
+                f"sub5 {user.mention} tacando tomate no true mogger🤣🤣🤣"
             )
 
         except discord.Forbidden:
