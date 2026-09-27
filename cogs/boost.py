@@ -7,10 +7,9 @@ from discord.ext import commands
 
 
 BOOSTER_ROLE_ID = 1553817043076259911
-LOWER_ROLE_ID = 1553840737655988244
-UPPER_ROLE_ID = 1553842552237457510
+ROLE_POSITION_UPPER_ID = 1553842552237457510
+ROLE_POSITION_LOWER_ID = 1553840828684963860
 REPAIR_BELOW_ROLE_ID = 1553832823264116796
-REPAIR_ABOVE_ROLE_ID = 1553840828684963860
 MANAGED_ROLE_PREFIXES = ("família -", "cargo -")
 FAMILY_MEMBER_LIMIT = 15
 
@@ -240,19 +239,26 @@ class Boost(commands.Cog):
         temporary_path.replace(self.storage_path)
 
     async def repair_managed_roles(self, guild: discord.Guild) -> None:
-        below_role = guild.get_role(REPAIR_BELOW_ROLE_ID)
-        above_role = guild.get_role(REPAIR_ABOVE_ROLE_ID)
+        trigger_role = guild.get_role(REPAIR_BELOW_ROLE_ID)
+        lower_role = guild.get_role(ROLE_POSITION_LOWER_ID)
+        upper_role = guild.get_role(ROLE_POSITION_UPPER_ID)
         bot_member = guild.me
-        if below_role is None or above_role is None:
+        if trigger_role is None or lower_role is None or upper_role is None:
             print(
                 f"Não foi possível verificar cargos gerenciados em {guild.name}: "
                 "cargo de referência não encontrado."
             )
             return
-        if bot_member is None or bot_member.top_role <= above_role:
+        if lower_role.position >= upper_role.position:
             print(
                 f"Não foi possível mover cargos gerenciados em {guild.name}: "
-                "o cargo do bot precisa estar acima do cargo de destino."
+                "os cargos de limite estão em ordem inválida."
+            )
+            return
+        if bot_member is None or bot_member.top_role <= upper_role:
+            print(
+                f"Não foi possível mover cargos gerenciados em {guild.name}: "
+                "o cargo do bot precisa estar acima do limite superior."
             )
             return
 
@@ -260,9 +266,13 @@ class Boost(commands.Cog):
             (
                 role
                 for role in guild.roles
-                if role.id not in {REPAIR_BELOW_ROLE_ID, REPAIR_ABOVE_ROLE_ID}
+                if role.id not in {
+                    REPAIR_BELOW_ROLE_ID,
+                    ROLE_POSITION_LOWER_ID,
+                    ROLE_POSITION_UPPER_ID,
+                }
                 and role.name.casefold().startswith(MANAGED_ROLE_PREFIXES)
-                and role.position < below_role.position
+                and role.position < trigger_role.position
             ),
             key=lambda role: role.position,
             reverse=True,
@@ -276,10 +286,10 @@ class Boost(commands.Cog):
                 )
                 continue
 
-            above_role = guild.get_role(REPAIR_ABOVE_ROLE_ID)
-            if above_role is None:
+            lower_role = guild.get_role(ROLE_POSITION_LOWER_ID)
+            if lower_role is None:
                 break
-            target_position = above_role.position + 1
+            target_position = lower_role.position + 1
             if role.position == target_position:
                 continue
 
@@ -305,8 +315,8 @@ class Boost(commands.Cog):
     async def create_managed_role(
         self, guild: discord.Guild, member: discord.Member, name_prefix: str
     ) -> discord.Role:
-        lower_role = guild.get_role(LOWER_ROLE_ID)
-        upper_role = guild.get_role(UPPER_ROLE_ID)
+        lower_role = guild.get_role(ROLE_POSITION_LOWER_ID)
+        upper_role = guild.get_role(ROLE_POSITION_UPPER_ID)
         bot_member = guild.me
         if lower_role is None or upper_role is None:
             raise ValueError("Não encontrei os cargos de referência configurados.")
