@@ -568,25 +568,6 @@ class Boost(commands.Cog):
             )
             button.callback = self._family_callback(action, guild_id, owner_id)
             view.add_item(button)
-        if self.personal_roles.get(self.key(guild_id, owner_id)):
-            personal_button = discord.ui.Button(
-                label="Editar cargo personalizado",
-                style=discord.ButtonStyle.primary,
-                custom_id=f"boost:family:personal-edit:{guild_id}:{owner_id}",
-            )
-            personal_button.callback = self._personal_edit_callback(
-                guild_id, owner_id
-            )
-            view.add_item(personal_button)
-            personal_icon_button = discord.ui.Button(
-                label="Editar ícone personalizado",
-                style=discord.ButtonStyle.secondary,
-                custom_id=f"boost:family:personal-icon:{guild_id}:{owner_id}",
-            )
-            personal_icon_button.callback = self._personal_icon_callback(
-                guild_id, owner_id
-            )
-            view.add_item(personal_icon_button)
         return view
 
     def personal_view(self, guild_id: int, owner_id: int) -> discord.ui.View:
@@ -670,6 +651,7 @@ class Boost(commands.Cog):
             "channel_id": interaction.channel_id,
             "expires_at": expires_at,
             "processing": False,
+            "interaction": interaction,
         }
         asyncio.create_task(self.expire_icon_edit(key, expires_at))
         await interaction.response.send_message(
@@ -684,6 +666,12 @@ class Boost(commands.Cog):
         pending = self.pending_icon_edits.get(key)
         if pending and pending["expires_at"] == expires_at:
             self.pending_icon_edits.pop(key, None)
+
+    async def send_icon_feedback(self, pending: dict, content: str) -> None:
+        try:
+            await pending["interaction"].followup.send(content, ephemeral=True)
+        except discord.HTTPException:
+            pass
 
     @commands.Cog.listener()
     async def on_message(self, message: discord.Message) -> None:
@@ -708,32 +696,26 @@ class Boost(commands.Cog):
             icon_png = await self.emoji_to_png(message.content.strip())
         except ValueError as error:
             pending["processing"] = False
-            await message.reply(str(error), mention_author=False, delete_after=10)
+            await self.send_icon_feedback(pending, str(error))
             return
         except (aiohttp.ClientError, asyncio.TimeoutError):
             pending["processing"] = False
-            await message.reply(
-                "Não consegui baixar a imagem do emoji. Tente novamente.",
-                mention_author=False,
-                delete_after=10,
+            await self.send_icon_feedback(
+                pending, "Não consegui baixar a imagem do emoji. Tente novamente."
             )
             return
         except (UnidentifiedImageError, OSError):
             pending["processing"] = False
-            await message.reply(
-                "A imagem do emoji não pôde ser convertida para PNG.",
-                mention_author=False,
-                delete_after=10,
+            await self.send_icon_feedback(
+                pending, "A imagem do emoji não pôde ser convertida para PNG."
             )
             return
 
         role = message.guild.get_role(pending["role_id"])
         if role is None:
             self.pending_icon_edits.pop(key, None)
-            return await message.reply(
-                "Não encontrei o cargo que você estava editando.",
-                mention_author=False,
-                delete_after=10,
+            return await self.send_icon_feedback(
+                pending, "Não encontrei o cargo que você estava editando."
             )
 
         try:
@@ -743,17 +725,15 @@ class Boost(commands.Cog):
             )
         except discord.Forbidden:
             pending["processing"] = False
-            return await message.reply(
+            return await self.send_icon_feedback(
+                pending,
                 "Não tenho permissão para editar esse cargo ou o servidor não permite ícones.",
-                mention_author=False,
-                delete_after=10,
             )
         except discord.HTTPException:
             pending["processing"] = False
-            return await message.reply(
+            return await self.send_icon_feedback(
+                pending,
                 "O Discord não aceitou o ícone. Verifique se o servidor permite ícones de cargos.",
-                mention_author=False,
-                delete_after=10,
             )
 
         try:
@@ -762,26 +742,25 @@ class Boost(commands.Cog):
             )
         except Exception:
             self.pending_icon_edits.pop(key, None)
-            return await message.reply(
+            return await self.send_icon_feedback(
+                pending,
                 "O ícone foi aplicado, mas não consegui registrá-lo no NeonDB; "
                 "a mensagem foi mantida.",
-                mention_author=False,
             )
 
         self.pending_icon_edits.pop(key, None)
         try:
             await message.delete()
         except discord.Forbidden:
-            return await message.channel.send(
+            return await self.send_icon_feedback(
+                pending,
                 f"Ícone do cargo **{role.name}** aplicado e registrado, mas não tenho permissão para apagar a mensagem.",
-                allowed_mentions=discord.AllowedMentions.none(),
             )
         except discord.NotFound:
             pass
 
-        await message.channel.send(
-            f"Ícone do cargo **{role.name}** aplicado e registrado.",
-            allowed_mentions=discord.AllowedMentions.none(),
+        await self.send_icon_feedback(
+            pending, f"Ícone do cargo **{role.name}** aplicado e registrado."
         )
 
     def _family_callback(self, action: str, guild_id: int, owner_id: int):
@@ -956,17 +935,6 @@ class Boost(commands.Cog):
             ),
             color=role.color if role and role.color.value else discord.Color.blurple(),
         )
-        personal_role_id = self.personal_roles.get(self.key(guild.id, owner_id))
-        personal_role = guild.get_role(personal_role_id) if personal_role_id else None
-        if personal_role is not None:
-            embed.add_field(
-                name="Cargo personalizado",
-                value=(
-                    f"{personal_role.mention}\n"
-                    f"Cor: `#{personal_role.color.value:06X}`"
-                ),
-                inline=False,
-            )
         embed.set_footer(text=f"Família de {guild.get_member(owner_id) or owner_id}")
         return embed
 
@@ -1125,14 +1093,6 @@ class Boost(commands.Cog):
                     "Não consegui salvar seu cargo no NeonDB; o cargo criado foi removido."
                 )
             self.bot.add_view(self.personal_view(ctx.guild.id, ctx.author.id))
-
-        family = self.families.get(key)
-        family_role = ctx.guild.get_role(family["role_id"]) if family else None
-        if family_role is not None:
-            return await ctx.send(
-                embed=self.family_embed(ctx.guild, ctx.author.id, family),
-                view=self.family_view(ctx.guild.id, ctx.author.id),
-            )
 
         await ctx.send(
             embed=self.personal_role_embed(ctx.guild, ctx.author.id, role),
