@@ -13,8 +13,11 @@ from discord.ext import commands
 
 
 BOOSTER_ROLE_ID = 1553817043076259911
+VIP_FULL_ROLE_ID = 1553891097867190382
+VIP_PERSONAL_ROLE_ID = 1521927629282738398
 ROLE_POSITION_UPPER_ID = 1553842552237457510
 ROLE_POSITION_LOWER_ID = 1553840828684963860
+FAMILY_POSITION_LOWER_ID = 1553841276774912220
 REPAIR_BELOW_ROLE_ID = 1553832823264116796
 MANAGED_ROLE_PREFIXES = ("família -", "familia -", "cargo -")
 FAMILY_MEMBER_LIMIT = 15
@@ -62,9 +65,14 @@ class RoleEditModal(discord.ui.Modal):
             return await interaction.response.send_message(
                 "Esse formulário pertence a outra pessoa.", ephemeral=True
             )
-        if not self.cog.is_booster(interaction.user):
+        can_edit = (
+            self.cog.can_manage_family(interaction.user)
+            if self.family
+            else self.cog.can_manage_personal_role(interaction.user)
+        )
+        if not can_edit:
             return await interaction.response.send_message(
-                "Este comando é exclusivo para boosters.", ephemeral=True
+                "Você não tem mais permissão para editar este cargo.", ephemeral=True
             )
 
         color_text = self.color_input.value.strip()
@@ -127,9 +135,9 @@ class FamilyMemberSelect(discord.ui.UserSelect):
             return await interaction.response.send_message(
                 "Esse painel pertence a outra pessoa.", ephemeral=True
             )
-        if not self.cog.is_booster(interaction.user):
+        if not self.cog.can_manage_family(interaction.user):
             return await interaction.response.send_message(
-                "Este comando é exclusivo para boosters.", ephemeral=True
+                "Gerenciar a família requer VIP maior ou boost.", ephemeral=True
             )
 
         state = self.cog.families.get(self.cog.key(interaction.guild_id, self.owner_id))
@@ -379,6 +387,28 @@ class Boost(commands.Cog):
             role.id == BOOSTER_ROLE_ID for role in member.roles
         )
 
+    def has_role(self, member: discord.abc.User, role_id: int) -> bool:
+        return isinstance(member, discord.Member) and any(
+            role.id == role_id for role in member.roles
+        )
+
+    def can_manage_family(self, member: discord.abc.User) -> bool:
+        return self.is_booster(member) or self.has_role(member, VIP_FULL_ROLE_ID)
+
+    def can_manage_personal_role(self, member: discord.abc.User) -> bool:
+        return (
+            self.can_manage_family(member)
+            or self.has_role(member, VIP_PERSONAL_ROLE_ID)
+        )
+
+    def family_access_message(self, member: discord.abc.User) -> str:
+        if self.has_role(member, VIP_PERSONAL_ROLE_ID):
+            return (
+                "Seu VIP atual permite apenas o cargo personalizado. "
+                "Gerenciar família requer upgrade para VIP maior ou boost."
+            )
+        return "Gerenciar família requer VIP maior ou boost."
+
     async def save(self) -> None:
         if self.pool is None:
             raise RuntimeError("NeonDB não está conectado.")
@@ -431,16 +461,25 @@ class Boost(commands.Cog):
 
     async def repair_managed_roles(self, guild: discord.Guild) -> None:
         trigger_role = guild.get_role(REPAIR_BELOW_ROLE_ID)
-        lower_role = guild.get_role(ROLE_POSITION_LOWER_ID)
+        personal_lower_role = guild.get_role(ROLE_POSITION_LOWER_ID)
+        family_lower_role = guild.get_role(FAMILY_POSITION_LOWER_ID)
         upper_role = guild.get_role(ROLE_POSITION_UPPER_ID)
         bot_member = guild.me
-        if trigger_role is None or lower_role is None or upper_role is None:
+        if (
+            trigger_role is None
+            or personal_lower_role is None
+            or family_lower_role is None
+            or upper_role is None
+        ):
             print(
                 f"Não foi possível verificar cargos gerenciados em {guild.name}: "
                 "cargo de referência não encontrado."
             )
             return
-        if lower_role.position >= upper_role.position:
+        if (
+            personal_lower_role.position >= upper_role.position
+            or family_lower_role.position >= upper_role.position
+        ):
             print(
                 f"Não foi possível mover cargos gerenciados em {guild.name}: "
                 "os cargos de limite estão em ordem inválida."
@@ -453,6 +492,16 @@ class Boost(commands.Cog):
             )
             return
 
+        family_role_ids = {
+            state["role_id"]
+            for key, state in self.families.items()
+            if int(key.split(":")[0]) == guild.id
+        }
+        personal_role_ids = {
+            role_id
+            for key, role_id in self.personal_roles.items()
+            if int(key.split(":")[0]) == guild.id
+        }
         managed_roles = sorted(
             (
                 role
@@ -460,9 +509,14 @@ class Boost(commands.Cog):
                 if role.id not in {
                     REPAIR_BELOW_ROLE_ID,
                     ROLE_POSITION_LOWER_ID,
+                    FAMILY_POSITION_LOWER_ID,
                     ROLE_POSITION_UPPER_ID,
                 }
-                and role.name.casefold().startswith(MANAGED_ROLE_PREFIXES)
+                and (
+                    role.id in family_role_ids
+                    or role.id in personal_role_ids
+                    or role.name.casefold().startswith(MANAGED_ROLE_PREFIXES)
+                )
                 and role.position < trigger_role.position
             ),
             key=lambda role: role.position,
@@ -477,7 +531,16 @@ class Boost(commands.Cog):
                 )
                 continue
 
-            lower_role = guild.get_role(ROLE_POSITION_LOWER_ID)
+            is_family_role = (
+                role.id in family_role_ids
+                or role.name.casefold().startswith(("família -", "familia -"))
+            )
+            lower_role_id = (
+                FAMILY_POSITION_LOWER_ID
+                if is_family_role
+                else ROLE_POSITION_LOWER_ID
+            )
+            lower_role = guild.get_role(lower_role_id)
             if lower_role is None:
                 break
             target_position = lower_role.position + 1
@@ -506,7 +569,12 @@ class Boost(commands.Cog):
     async def create_managed_role(
         self, guild: discord.Guild, member: discord.Member, name_prefix: str
     ) -> discord.Role:
-        lower_role = guild.get_role(ROLE_POSITION_LOWER_ID)
+        lower_role_id = (
+            FAMILY_POSITION_LOWER_ID
+            if name_prefix.casefold() in {"família", "familia"}
+            else ROLE_POSITION_LOWER_ID
+        )
+        lower_role = guild.get_role(lower_role_id)
         upper_role = guild.get_role(ROLE_POSITION_UPPER_ID)
         bot_member = guild.me
         if lower_role is None or upper_role is None:
@@ -636,7 +704,10 @@ class Boost(commands.Cog):
             return output.getvalue()
 
     async def start_icon_edit(
-        self, interaction: discord.Interaction, role: discord.Role
+        self,
+        interaction: discord.Interaction,
+        role: discord.Role,
+        family: bool,
     ) -> None:
         if self.pool is None:
             return await interaction.response.send_message(
@@ -648,6 +719,7 @@ class Boost(commands.Cog):
         expires_at = asyncio.get_running_loop().time() + 120
         self.pending_icon_edits[key] = {
             "role_id": role.id,
+            "family": family,
             "channel_id": interaction.channel_id,
             "expires_at": expires_at,
             "processing": False,
@@ -687,8 +759,19 @@ class Boost(commands.Cog):
             return
         if message.channel.id != pending["channel_id"] or pending["processing"]:
             return
-        if not self.is_booster(message.author):
+        can_edit = (
+            self.can_manage_family(message.author)
+            if pending["family"]
+            else self.can_manage_personal_role(message.author)
+        )
+        if not can_edit:
             self.pending_icon_edits.pop(key, None)
+            await self.send_icon_feedback(
+                pending,
+                self.family_access_message(message.author)
+                if pending["family"]
+                else "Você não tem mais permissão para editar o cargo pessoal.",
+            )
             return
 
         pending["processing"] = True
@@ -769,9 +852,9 @@ class Boost(commands.Cog):
                 return await interaction.response.send_message(
                     "Esse painel pertence a outra pessoa.", ephemeral=True
                 )
-            if not self.is_booster(interaction.user):
+            if not self.can_manage_family(interaction.user):
                 return await interaction.response.send_message(
-                    "Este comando é exclusivo para boosters.", ephemeral=True
+                    self.family_access_message(interaction.user), ephemeral=True
                 )
             if interaction.guild_id != guild_id:
                 return await interaction.response.send_message(
@@ -796,7 +879,7 @@ class Boost(commands.Cog):
                     RoleEditModal(self, owner_id, role.id, family=True)
                 )
             if action == "icon":
-                return await self.start_icon_edit(interaction, role)
+                return await self.start_icon_edit(interaction, role, family=True)
             if action in {"add", "remove"}:
                 select_view = discord.ui.View(timeout=180)
                 select_view.add_item(
@@ -874,9 +957,9 @@ class Boost(commands.Cog):
                 return await interaction.response.send_message(
                     "Esse painel pertence a outra pessoa.", ephemeral=True
                 )
-            if not self.is_booster(interaction.user):
+            if not self.can_manage_personal_role(interaction.user):
                 return await interaction.response.send_message(
-                    "Este comando é exclusivo para boosters.", ephemeral=True
+                    "Este comando requer VIP ou boost.", ephemeral=True
                 )
             if interaction.guild_id != guild_id:
                 return await interaction.response.send_message(
@@ -901,9 +984,9 @@ class Boost(commands.Cog):
                 return await interaction.response.send_message(
                     "Esse painel pertence a outra pessoa.", ephemeral=True
                 )
-            if not self.is_booster(interaction.user):
+            if not self.can_manage_personal_role(interaction.user):
                 return await interaction.response.send_message(
-                    "Este comando é exclusivo para boosters.", ephemeral=True
+                    "Este comando requer VIP ou boost.", ephemeral=True
                 )
             if interaction.guild_id != guild_id:
                 return await interaction.response.send_message(
@@ -916,7 +999,7 @@ class Boost(commands.Cog):
                     "Não encontrei seu cargo personalizado. Use `,cargo` novamente.",
                     ephemeral=True,
                 )
-            await self.start_icon_edit(interaction, role)
+            await self.start_icon_edit(interaction, role, family=False)
 
         return callback
 
@@ -958,8 +1041,8 @@ class Boost(commands.Cog):
     async def family_command(self, ctx: commands.Context) -> None:
         if ctx.guild is None or not isinstance(ctx.author, discord.Member):
             return await ctx.send("Este comando só pode ser usado em um servidor.")
-        if not self.is_booster(ctx.author):
-            return await ctx.send("Este comando é exclusivo para boosters.")
+        if not self.can_manage_family(ctx.author):
+            return await ctx.send(self.family_access_message(ctx.author))
         if self.pool is None:
             return await ctx.send(
                 "Não consegui conectar ao NeonDB. Confira a variável `DATABASE` no Render."
@@ -1036,8 +1119,8 @@ class Boost(commands.Cog):
     async def personal_role_command(self, ctx: commands.Context) -> None:
         if ctx.guild is None or not isinstance(ctx.author, discord.Member):
             return await ctx.send("Este comando só pode ser usado em um servidor.")
-        if not self.is_booster(ctx.author):
-            return await ctx.send("Este comando é exclusivo para boosters.")
+        if not self.can_manage_personal_role(ctx.author):
+            return await ctx.send("Este comando requer VIP ou boost.")
         if self.pool is None:
             return await ctx.send(
                 "Não consegui conectar ao NeonDB. Confira a variável `DATABASE` no Render."
