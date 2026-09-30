@@ -1,4 +1,6 @@
 import asyncio
+import array
+import math
 import os
 import shlex
 import shutil
@@ -37,6 +39,48 @@ FFMPEG_OPTIONS = {
     'options': '-vn',
 }
 FFMPEG_EXECUTABLE = shutil.which("ffmpeg") or imageio_ffmpeg.get_ffmpeg_exe()
+
+
+class AudioLevelMonitor(discord.AudioSource):
+    def __init__(self, source: discord.AudioSource):
+        self.source = source
+        self.frames_checked = 0
+        self.sample_count = 0
+        self.peak = 0
+        self.sum_squares = 0
+        self.logged = False
+
+    def read(self) -> bytes:
+        data = self.source.read()
+        if data and self.frames_checked < 100:
+            samples = array.array("h")
+            samples.frombytes(data)
+            if samples:
+                self.peak = max(self.peak, max(abs(sample) for sample in samples))
+                self.sample_count += len(samples)
+                self.sum_squares += sum(sample * sample for sample in samples)
+            self.frames_checked += 1
+
+        if not self.logged and (self.frames_checked >= 100 or not data):
+            rms = (
+                math.sqrt(self.sum_squares / self.sample_count)
+                if self.sample_count
+                else 0
+            )
+            print(
+                f"Nível PCM inicial: pico={self.peak}/32768, "
+                f"RMS={rms:.0f}/32768, quadros={self.frames_checked}",
+                flush=True,
+            )
+            self.logged = True
+
+        return data
+
+    def is_opus(self) -> bool:
+        return self.source.is_opus()
+
+    def cleanup(self) -> None:
+        self.source.cleanup()
 
 
 @contextmanager
@@ -258,7 +302,7 @@ class Music(commands.Cog):
                         print(f"Erro ao reproduzir áudio: {error}", flush=True)
                     self.bot.loop.call_soon_threadsafe(finished.set)
 
-                voice.play(source, after=after)
+                voice.play(AudioLevelMonitor(source), after=after)
                 if channel:
                     await channel.send(f"▶️ Tocando agora: **{track.title}**")
                 await finished.wait()
