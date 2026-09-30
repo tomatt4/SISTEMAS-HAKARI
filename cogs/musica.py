@@ -226,8 +226,7 @@ class Music(commands.Cog):
                 source = discord.FFmpegPCMAudio(
                     audio_url,
                     executable=imageio_ffmpeg.get_ffmpeg_exe(),
-                    before_options=FFMPEG_BEFORE_OPTIONS,
-                    options="-vn",
+                    **FFMPEG_OPTIONS,
                 )
                 finished = asyncio.Event()
 
