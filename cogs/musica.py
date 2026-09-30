@@ -1,5 +1,7 @@
 import asyncio
+import os
 from dataclasses import dataclass, field
+from pathlib import Path
 
 import discord
 import imageio_ffmpeg
@@ -21,6 +23,40 @@ FFMPEG_BEFORE_OPTIONS = (
 )
 
 
+def get_ytdl_options() -> dict:
+    options = YTDL_OPTIONS.copy()
+    cookie_file = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
+
+    if cookie_file:
+        if not Path(cookie_file).is_file():
+            raise FileNotFoundError(
+                "O arquivo configurado em YOUTUBE_COOKIES_FILE não existe."
+            )
+        options["cookiefile"] = cookie_file
+
+    return options
+
+
+def describe_youtube_error(error: Exception) -> str:
+    message = str(error)
+    normalized_message = message.lower()
+
+    if "confirm you're not a bot" in normalized_message:
+        return (
+            "O YouTube está exigindo autenticação para essa reprodução. "
+            "Configure um arquivo de cookies Netscape no servidor usando "
+            "a variável YOUTUBE_COOKIES_FILE e tente novamente."
+        )
+
+    if isinstance(error, FileNotFoundError):
+        return (
+            "O arquivo de cookies configurado não foi encontrado no servidor. "
+            "Confira o caminho de YOUTUBE_COOKIES_FILE."
+        )
+
+    return message
+
+
 @dataclass
 class Track:
     title: str
@@ -38,7 +74,7 @@ class MusicState:
 
 
 def extract_track(query: str) -> Track:
-    with yt_dlp.YoutubeDL(YTDL_OPTIONS) as ytdl:
+    with yt_dlp.YoutubeDL(get_ytdl_options()) as ytdl:
         result = ytdl.extract_info(query, download=False)
 
     if result is None:
@@ -66,7 +102,7 @@ def extract_track(query: str) -> Track:
 
 
 def extract_audio_url(url: str) -> str:
-    with yt_dlp.YoutubeDL(YTDL_OPTIONS) as ytdl:
+    with yt_dlp.YoutubeDL(get_ytdl_options()) as ytdl:
         result = ytdl.extract_info(url, download=False)
 
     if result is None:
@@ -171,7 +207,8 @@ class Music(commands.Cog):
                 )
                 if channel:
                     await channel.send(
-                        f"Não consegui reproduzir **{track.title}**."
+                        f"Não consegui reproduzir **{track.title}**. "
+                        f"{describe_youtube_error(error)}"
                     )
             finally:
                 state.current = None
@@ -201,7 +238,9 @@ class Music(commands.Cog):
         try:
             track = await asyncio.to_thread(extract_track, busca)
         except Exception as error:
-            await interaction.followup.send(f"Não encontrei essa música: {error}")
+            await interaction.followup.send(
+                f"Não encontrei essa música: {describe_youtube_error(error)}"
+            )
             return
 
         try:
