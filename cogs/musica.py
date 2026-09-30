@@ -13,16 +13,16 @@ from discord.ext import commands
 
 
 YTDL_OPTIONS = {
-    "format": "bestaudio/best",
+    'format': 'bestaudio/best/ba*/b',
     "noplaylist": True,
     "quiet": True,
     "no_warnings": True,
     "default_search": "ytsearch1",
     'source_address': '0.0.0.0',
-    
+
     "extractor_args": {
         "youtube": {
-            "player_client": ['web_creator', 'mweb', 'android', 'ios'],
+            "player_client": 'player_client': ['ios', 'android', 'mweb'],
         },
     },
 }
