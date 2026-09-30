@@ -124,7 +124,7 @@ async def tomate_core(
         try:
             await selected_msg.add_reaction("🍅")
 
-            await send("oi")
+            await send("taquei tomate no dono do servidor haha sou muito mau")
 
         except discord.Forbidden:
             await send(
@@ -138,7 +138,7 @@ async def tomate_core(
     if chance <= 35:
 
         await send(
-            f"**RARO** (**CHANCE: 35%**) "
+            f"(**CHANCE: 35%**) "
             f"{target.mention} desviou do tomate!"
         )
         return
@@ -146,8 +146,8 @@ async def tomate_core(
     elif chance <= 45:
 
         await send(
-            f"**SUPER RARO** (**CHANCE: 10%**): "
-            f"{target.mention} deu parry e jogou de volta "
+            f"(**CHANCE: 10%**): "
+            f"{target.mention} pegou o tomatet no ar e jogou de volta "
             f"em {author.mention}!"
         )
         return
@@ -155,10 +155,10 @@ async def tomate_core(
     elif chance <= 50:
 
         await send(
-            f"**ULTRA RARO** (**CHANCE: 5%**): "
-            f"{target.mention} ativou o **Infinito** de "
-            f"**Gojo Satoru** e o tomate congelou no ar "
-            f"perto de {target.mention}."
+            f"(**CHANCE: 5%**): "
+            f"{target.mention} o tomate simplesmente "
+            f"foi aniquilado pelo conceito existencial da física "
+            f"perto de {target.mention}"
         )
         return
 
@@ -168,6 +168,12 @@ async def tomate_core(
             "errei o tomate kkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkkj"
         )
         return
+
+    elif chance <= 51:
+
+        await send(
+            f"(**CHANCE: 1%**) o tomate foi cortado ao meio pelos pensamentos de {target.mention} (caralho megamente)"
+        )
 
     else:
 
