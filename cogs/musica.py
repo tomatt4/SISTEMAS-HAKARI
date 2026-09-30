@@ -163,6 +163,7 @@ class Track:
     text_channel_id: int
     artist: str
     duration: float | None
+    thumbnail: str | None
     recovery_attempts: int = 0
 
 
@@ -207,6 +208,20 @@ def format_elapsed(seconds: float) -> str:
     return f"{minutes}min {remainder}s"
 
 
+def format_clock(seconds: float | None) -> str:
+    if seconds is None:
+        return "--:--"
+    if seconds > 10 * 60 * 60:
+        return "Mais de 10 horas"
+
+    total_seconds = int(seconds)
+    hours, remainder = divmod(total_seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    if hours:
+        return f"{hours}:{minutes:02}:{seconds:02}"
+    return f"{minutes}:{seconds:02}"
+
+
 def extract_track(query: str) -> Track:
     with youtube_dl_instance() as ytdl:
         result = ytdl.extract_info(query, download=False)
@@ -240,6 +255,7 @@ def extract_track(query: str) -> Track:
             or "Desconhecido"
         ),
         duration=result.get("duration"),
+        thumbnail=result.get("thumbnail"),
     )
 
 
@@ -318,14 +334,34 @@ class Music(commands.Cog):
     ) -> discord.Embed:
         embed = discord.Embed(
             title=track.title,
+            url=track.url,
             color=discord.Color.green(),
             timestamp=timestamp,
         )
+        bot_user = self.bot.user
+        embed.set_author(
+            name="🎵 Tocando Agora",
+            icon_url=bot_user.display_avatar.url if bot_user else None,
+        )
+        if track.thumbnail:
+            embed.set_thumbnail(url=track.thumbnail)
         embed.add_field(name="Artista", value=track.artist, inline=True)
         embed.add_field(
             name="Duração",
             value=format_duration(track.duration),
             inline=True,
+        )
+        embed.add_field(
+            name="Solicitado por",
+            value=user.mention,
+            inline=True,
+        )
+        embed.add_field(
+            name="Progresso",
+            value=(
+                f"🔘──────────── [0:00 / {format_clock(track.duration)}]"
+            ),
+            inline=False,
         )
         embed.set_footer(text=f"Música {action} por {user.display_name}")
         return embed
@@ -492,7 +528,7 @@ class Music(commands.Cog):
             await interaction.followup.send(f"Não consegui entrar no canal: {error}")
             return
 
-        track.requested_by = interaction.user.display_name
+        track.requested_by = interaction.user.mention
         track.text_channel_id = interaction.channel_id
         state = self._state_for(interaction.guild.id)
         state.queue.append(track)
