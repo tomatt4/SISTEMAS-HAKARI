@@ -1,5 +1,6 @@
 import asyncio
 import os
+import shlex
 import shutil
 import tempfile
 from contextlib import contextmanager
@@ -145,7 +146,7 @@ def extract_track(query: str) -> Track:
     )
 
 
-def extract_audio_url(url: str) -> str:
+def extract_audio_url(url: str) -> tuple[str, dict[str, str]]:
     with youtube_dl_instance() as ytdl:
         result = ytdl.extract_info(url, download=False)
 
@@ -162,7 +163,8 @@ def extract_audio_url(url: str) -> str:
     if not audio_url:
         raise ValueError("O YouTube não retornou um endereço de áudio.")
 
-    return audio_url
+    audio_headers = result.get("http_headers") or {}
+    return audio_url, audio_headers
 
 
 class Music(commands.Cog):
@@ -222,14 +224,32 @@ class Music(commands.Cog):
             channel = self.bot.get_channel(track.text_channel_id)
 
             try:
-                audio_url = await asyncio.to_thread(extract_audio_url, track.url)
+                audio_url, audio_headers = await asyncio.to_thread(
+                    extract_audio_url,
+                    track.url,
+                )
                 if generation != state.generation:
                     continue
+
+                ffmpeg_options = FFMPEG_OPTIONS.copy()
+                header_lines = "".join(
+                    f"{name}: {value}\r\n"
+                    for name, value in audio_headers.items()
+                    if name.lower() not in {
+                        "cookie",
+                        "authorization",
+                        "proxy-authorization",
+                    }
+                )
+                if header_lines:
+                    ffmpeg_options["before_options"] += (
+                        f" -headers {shlex.quote(header_lines)}"
+                    )
 
                 source = discord.FFmpegPCMAudio(
                     audio_url,
                     executable=FFMPEG_EXECUTABLE,
-                    **FFMPEG_OPTIONS,
+                    **ffmpeg_options,
                 )
                 finished = asyncio.Event()
 
