@@ -27,9 +27,10 @@ YTDL_OPTIONS = {
     },
 }
 
-FFMPEG_BEFORE_OPTIONS = (
-    "-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5"
-)
+FFMPEG_OPTIONS = {
+    'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
+    'options': '-vn',
+}
 
 
 @contextmanager
