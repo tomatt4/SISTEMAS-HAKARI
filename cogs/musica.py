@@ -39,13 +39,25 @@ def get_ytdl_options() -> dict:
 
 def describe_youtube_error(error: Exception) -> str:
     message = str(error)
-    normalized_message = message.lower()
+    normalized_message = message.lower().replace("’", "'")
 
     if "confirm you're not a bot" in normalized_message:
+        cookie_file = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
+        if not cookie_file:
+            return (
+                "O YouTube exigiu autenticação, mas YOUTUBE_COOKIES_FILE "
+                "não está definida no processo do bot. Configure no Render "
+                "o caminho de um Secret File em formato Netscape e reinicie."
+            )
+        if not Path(cookie_file).is_file():
+            return (
+                "YOUTUBE_COOKIES_FILE está definida, mas o arquivo não foi "
+                "encontrado no servidor. Confira o Secret File e o caminho."
+            )
         return (
-            "O YouTube está exigindo autenticação para essa reprodução. "
-            "Configure um arquivo de cookies Netscape no servidor usando "
-            "a variável YOUTUBE_COOKIES_FILE e tente novamente."
+            "O arquivo de cookies foi encontrado, mas o YouTube ainda os "
+            "recusou. Exporte cookies Netscape recentes de uma sessão "
+            "conectada ao YouTube e atualize o Secret File no Render."
         )
 
     if isinstance(error, FileNotFoundError):
