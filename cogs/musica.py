@@ -1,5 +1,6 @@
 import asyncio
 import os
+import shutil
 import tempfile
 from contextlib import contextmanager
 from dataclasses import dataclass, field
@@ -34,6 +35,7 @@ FFMPEG_OPTIONS = {
     'before_options': '-reconnect 1 -reconnect_streamed 1 -reconnect_delay_max 5',
     'options': '-vn',
 }
+FFMPEG_EXECUTABLE = shutil.which("ffmpeg") or imageio_ffmpeg.get_ffmpeg_exe()
 
 
 @contextmanager
@@ -167,6 +169,7 @@ class Music(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.states: dict[int, MusicState] = {}
+        print(f"FFmpeg selecionado: {FFMPEG_EXECUTABLE}", flush=True)
 
     async def _get_requester_voice(
         self,
@@ -225,7 +228,7 @@ class Music(commands.Cog):
 
                 source = discord.FFmpegPCMAudio(
                     audio_url,
-                    executable=imageio_ffmpeg.get_ffmpeg_exe(),
+                    executable=FFMPEG_EXECUTABLE,
                     **FFMPEG_OPTIONS,
                 )
                 finished = asyncio.Event()
