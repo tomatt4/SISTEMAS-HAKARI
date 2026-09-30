@@ -1,5 +1,5 @@
 discord.py[voice]==2.7.1
-yt-dlp
+https://github.com/yt-dlp/yt-dlp/archive/master.tar.gz
 imageio-ffmpeg
 python-dotenv
 flask
