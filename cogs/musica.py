@@ -720,14 +720,14 @@ class Music(commands.Cog):
             value=f"{latency_ms:.0f} ms",
             inline=True,
         )
-        embed.add_field(name="Estado do player", value=player_status, inline=True)
+        embed.add_field(name="Estado do SoundCloud", value=player_status, inline=True)
         embed.add_field(
             name="Canal de voz",
             value=voice.channel.mention if voice and voice.is_connected() else "Nenhum",
             inline=True,
         )
         embed.add_field(
-            name="Comandos na call",
+            name="Comandos de música",
             value=(
                 "`/play` · `/pause` · `/resume` · `/skip` · `/stop`\n"
                 "`/volume` · `/queue` · `/leave` · `/autofix` · `/infoplayer`"
