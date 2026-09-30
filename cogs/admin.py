@@ -12,11 +12,11 @@ class Admin(commands.Cog):
     def _can_act(self, actor: discord.Member, target: discord.Member, guild: discord.Guild) -> tuple[bool, str]:
         """Verifica se um membro pode agir em outro"""
         if target == actor:
-            return False, "você não pode usar punições contra si mesmo"
+            return False, "<:wrong:1554659471223947324> você não pode usar punições contra si mesmo"
         if target.top_role >= actor.top_role and guild.owner_id != actor.id:
-            return False, "você não pode agir em alguém com cargo igual ou superior ao seu"
+            return False, "<:wrong:1554659471223947324> você não pode agir em alguém com cargo igual ou superior ao seu"
         if target.top_role >= guild.me.top_role:
-            return False, "o bot não tem cargo suficiente para agir nesse membro"
+            return False, "<:wrong:1554659471223947324> o bot não tem cargo suficiente para agir nesse membro"
         return True, ""
 
     def _parse_duration(self, duration: str) -> Optional[int]:

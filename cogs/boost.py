@@ -63,7 +63,7 @@ class RoleEditModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction) -> None:
         if interaction.user.id != self.owner_id:
             return await interaction.response.send_message(
-                "Esse formulário pertence a outra pessoa.", ephemeral=True
+                "<:wrong:1554659471223947324> Esse formulário pertence a outra pessoa.", ephemeral=True
             )
         can_edit = (
             self.cog.can_manage_family(interaction.user)
@@ -72,25 +72,25 @@ class RoleEditModal(discord.ui.Modal):
         )
         if not can_edit:
             return await interaction.response.send_message(
-                "Você não tem mais permissão para editar este cargo.", ephemeral=True
+                "<:wrong:1554659471223947324> Você não tem mais permissão para editar este cargo.", ephemeral=True
             )
 
         color_text = self.color_input.value.strip()
         if not re.fullmatch(r"#?[0-9a-fA-F]{6}", color_text):
             return await interaction.response.send_message(
-                "Informe uma cor hexadecimal válida, como `000000` ou `#000000`.",
+                "<:wrong:1554659471223947324> Informe uma cor hexadecimal válida, como `000000` ou `#000000`.",
                 ephemeral=True,
             )
         role_name = self.name_input.value.strip()
         if not role_name:
             return await interaction.response.send_message(
-                "O nome do cargo não pode ficar vazio.", ephemeral=True
+                "<:wrong:1554659471223947324> O nome do cargo não pode ficar vazio.", ephemeral=True
             )
 
         role = interaction.guild.get_role(self.role_id)
         if role is None:
             return await interaction.response.send_message(
-                "Não encontrei esse cargo no servidor.", ephemeral=True
+                "<:wrong:1554659471223947324> Não encontrei esse cargo no servidor.", ephemeral=True
             )
 
         try:
@@ -101,16 +101,16 @@ class RoleEditModal(discord.ui.Modal):
             )
         except discord.Forbidden:
             return await interaction.response.send_message(
-                "Não tenho permissão para editar esse cargo.", ephemeral=True
+                "<:wrong:1554659471223947324> Não tenho permissão para editar esse cargo.", ephemeral=True
             )
         except discord.HTTPException:
             return await interaction.response.send_message(
-                "O Discord não conseguiu atualizar o cargo. Tente novamente.",
+                "<:wrong:1554659471223947324> O Discord não conseguiu atualizar o cargo. Tente novamente.",
                 ephemeral=True,
             )
 
         await interaction.response.send_message(
-            f"Cargo atualizado para **{role.name}**.", ephemeral=True
+            f"<:correct:1554659481512841267> Cargo atualizado para **{role.name}**.", ephemeral=True
         )
 
 
@@ -133,18 +133,18 @@ class FamilyMemberSelect(discord.ui.UserSelect):
     async def callback(self, interaction: discord.Interaction) -> None:
         if interaction.user.id != self.owner_id:
             return await interaction.response.send_message(
-                "Esse painel pertence a outra pessoa.", ephemeral=True
+                "<:wrong:1554659471223947324> Esse painel pertence a outra pessoa.", ephemeral=True
             )
         if not self.cog.can_manage_family(interaction.user):
             return await interaction.response.send_message(
-                "Gerenciar a família requer VIP maior ou boost.", ephemeral=True
+                "<:wrong:1554659471223947324> Gerenciar a família requer VIP maior ou boost.", ephemeral=True
             )
 
         state = self.cog.families.get(self.cog.key(interaction.guild_id, self.owner_id))
         role = interaction.guild.get_role(state["role_id"]) if state else None
         if role is None:
             return await interaction.response.send_message(
-                "A família não está configurada. Use `,familia` para abrir o painel.",
+                "<:wrong:1554659471223947324> A família não está configurada. Use `,familia` para abrir o painel.",
                 ephemeral=True,
             )
 
@@ -159,7 +159,7 @@ class FamilyMemberSelect(discord.ui.UserSelect):
             new_members = [member for member in chosen_members if member not in current_members]
             if len(current_members) + len(new_members) > FAMILY_MEMBER_LIMIT:
                 return await interaction.response.send_message(
-                    f"A família pode ter no máximo {FAMILY_MEMBER_LIMIT} pessoas, contando você.",
+                    f"<:wrong:1554659471223947324> A família pode ter no máximo {FAMILY_MEMBER_LIMIT} pessoas, contando você.",
                     ephemeral=True,
                 )
             try:
@@ -167,7 +167,7 @@ class FamilyMemberSelect(discord.ui.UserSelect):
                     await member.add_roles(role, reason=f"Adicionado à família de {self.owner_id}")
             except discord.Forbidden:
                 return await interaction.response.send_message(
-                    "Não consegui adicionar os membros. Verifique a hierarquia e as permissões do bot.",
+                    "<:wrong:1554659471223947324> Não consegui adicionar os membros. Verifique a hierarquia e as permissões do bot.",
                     ephemeral=True,
                 )
             verb = "adicionado(s)"
@@ -184,7 +184,7 @@ class FamilyMemberSelect(discord.ui.UserSelect):
                     )
             except discord.Forbidden:
                 return await interaction.response.send_message(
-                    "Não consegui remover os membros. Verifique a hierarquia e as permissões do bot.",
+                    "<:wrong:1554659471223947324> Não consegui remover os membros. Verifique a hierarquia e as permissões do bot.",
                     ephemeral=True,
                 )
             verb = "removido(s)"
@@ -192,10 +192,10 @@ class FamilyMemberSelect(discord.ui.UserSelect):
         changed_members = new_members if self.adding else removable
         if chosen_members and not changed_members:
             return await interaction.response.send_message(
-                "Nenhum membro precisou ser alterado.", ephemeral=True
+                "<:wrong:1554659471223947324> Nenhum membro precisou ser alterado.", ephemeral=True
             )
         await interaction.response.send_message(
-            f"{len(changed_members)} membro(s) {verb}.", ephemeral=True
+            f"<:correct:1554659481512841267> {len(changed_members)} membro(s) {verb}.", ephemeral=True
         )
 
 
@@ -404,10 +404,10 @@ class Boost(commands.Cog):
     def family_access_message(self, member: discord.abc.User) -> str:
         if self.has_role(member, VIP_PERSONAL_ROLE_ID):
             return (
-                "Seu VIP atual permite apenas o cargo personalizado. "
+                "<:wrong:1554659471223947324> Seu VIP atual permite apenas o cargo personalizado. "
                 "Gerenciar família requer upgrade para VIP maior ou boost."
             )
-        return "Gerenciar família requer VIP maior ou boost."
+        return "<:wrong:1554659471223947324> Gerenciar família requer VIP maior ou boost."
 
     async def save(self) -> None:
         if self.pool is None:
@@ -711,7 +711,7 @@ class Boost(commands.Cog):
     ) -> None:
         if self.pool is None:
             return await interaction.response.send_message(
-                "Não consegui conectar ao NeonDB para registrar o emoji.",
+                "<:wrong:1554659471223947324> Não consegui conectar ao NeonDB para registrar o emoji.",
                 ephemeral=True,
             )
 
@@ -770,7 +770,7 @@ class Boost(commands.Cog):
                 pending,
                 self.family_access_message(message.author)
                 if pending["family"]
-                else "Você não tem mais permissão para editar o cargo pessoal.",
+                else "<:wrong:1554659471223947324> Você não tem mais permissão para editar o cargo pessoal.",
             )
             return
 
@@ -779,18 +779,20 @@ class Boost(commands.Cog):
             icon_png = await self.emoji_to_png(message.content.strip())
         except ValueError as error:
             pending["processing"] = False
-            await self.send_icon_feedback(pending, str(error))
+            await self.send_icon_feedback(
+                pending, f"<:wrong:1554659471223947324> {error}"
+            )
             return
         except (aiohttp.ClientError, asyncio.TimeoutError):
             pending["processing"] = False
             await self.send_icon_feedback(
-                pending, "Não consegui baixar a imagem do emoji. Tente novamente."
+                pending, "<:wrong:1554659471223947324> Não consegui baixar a imagem do emoji. Tente novamente."
             )
             return
         except (UnidentifiedImageError, OSError):
             pending["processing"] = False
             await self.send_icon_feedback(
-                pending, "A imagem do emoji não pôde ser convertida para PNG."
+                pending, "<:wrong:1554659471223947324> A imagem do emoji não pôde ser convertida para PNG."
             )
             return
 
@@ -798,7 +800,7 @@ class Boost(commands.Cog):
         if role is None:
             self.pending_icon_edits.pop(key, None)
             return await self.send_icon_feedback(
-                pending, "Não encontrei o cargo que você estava editando."
+                pending, "<:wrong:1554659471223947324> Não encontrei o cargo que você estava editando."
             )
 
         try:
@@ -810,13 +812,13 @@ class Boost(commands.Cog):
             pending["processing"] = False
             return await self.send_icon_feedback(
                 pending,
-                "Não tenho permissão para editar esse cargo ou o servidor não permite ícones.",
+                "<:wrong:1554659471223947324> Não tenho permissão para editar esse cargo ou o servidor não permite ícones.",
             )
         except discord.HTTPException:
             pending["processing"] = False
             return await self.send_icon_feedback(
                 pending,
-                "O Discord não aceitou o ícone. Verifique se o servidor permite ícones de cargos.",
+                "<:wrong:1554659471223947324> O Discord não aceitou o ícone. Verifique se o servidor permite ícones de cargos.",
             )
 
         try:
@@ -827,7 +829,7 @@ class Boost(commands.Cog):
             self.pending_icon_edits.pop(key, None)
             return await self.send_icon_feedback(
                 pending,
-                "O ícone foi aplicado, mas não consegui registrá-lo no NeonDB; "
+                "<:wrong:1554659471223947324> O ícone foi aplicado, mas não consegui registrá-lo no NeonDB; "
                 "a mensagem foi mantida.",
             )
 
@@ -837,20 +839,20 @@ class Boost(commands.Cog):
         except discord.Forbidden:
             return await self.send_icon_feedback(
                 pending,
-                f"Ícone do cargo **{role.name}** aplicado e registrado, mas não tenho permissão para apagar a mensagem.",
+                f"<:wrong:1554659471223947324> Ícone do cargo **{role.name}** aplicado e registrado, mas não tenho permissão para apagar a mensagem.",
             )
         except discord.NotFound:
             pass
 
         await self.send_icon_feedback(
-            pending, f"Ícone do cargo **{role.name}** aplicado e registrado."
+            pending, f"<:correct:1554659481512841267> Ícone do cargo **{role.name}** aplicado e registrado."
         )
 
     def _family_callback(self, action: str, guild_id: int, owner_id: int):
         async def callback(interaction: discord.Interaction) -> None:
             if interaction.user.id != owner_id:
                 return await interaction.response.send_message(
-                    "Esse painel pertence a outra pessoa.", ephemeral=True
+                    "<:wrong:1554659471223947324> Esse painel pertence a outra pessoa.", ephemeral=True
                 )
             if not self.can_manage_family(interaction.user):
                 return await interaction.response.send_message(
@@ -858,19 +860,19 @@ class Boost(commands.Cog):
                 )
             if interaction.guild_id != guild_id:
                 return await interaction.response.send_message(
-                    "Esse painel não pertence a este servidor.", ephemeral=True
+                    "<:wrong:1554659471223947324> Esse painel não pertence a este servidor.", ephemeral=True
                 )
 
             state = self.families.get(self.key(guild_id, owner_id))
             if state is None:
                 return await interaction.response.send_message(
-                    "Não encontrei os dados desta família. Use `,familia` novamente.",
+                    "<:wrong:1554659471223947324> Não encontrei os dados desta família. Use `,familia` novamente.",
                     ephemeral=True,
                 )
             role = interaction.guild.get_role(state["role_id"])
             if role is None:
                 return await interaction.response.send_message(
-                    "O cargo da família não existe mais. Use `,familia` novamente.",
+                    "<:wrong:1554659471223947324> O cargo da família não existe mais. Use `,familia` novamente.",
                     ephemeral=True,
                 )
 
@@ -898,7 +900,7 @@ class Boost(commands.Cog):
                 voice_channel = interaction.guild.get_channel(state["voice_channel_id"])
                 if voice_channel:
                     return await interaction.response.send_message(
-                        f"A call exclusiva já está criada: {voice_channel.mention}",
+                        f"<:wrong:1554659471223947324> A call exclusiva já está criada: {voice_channel.mention}",
                         ephemeral=True,
                     )
                 state["voice_channel_id"] = None
@@ -920,12 +922,12 @@ class Boost(commands.Cog):
                 )
             except discord.Forbidden:
                 return await interaction.followup.send(
-                    "Não tenho permissão para criar a call. Verifique `Gerenciar canais`.",
+                    "<:wrong:1554659471223947324> Não tenho permissão para criar a call. Verifique `Gerenciar canais`.",
                     ephemeral=True,
                 )
             except discord.HTTPException:
                 return await interaction.followup.send(
-                    "O Discord não conseguiu criar a call. Tente novamente.",
+                    "<:wrong:1554659471223947324> O Discord não conseguiu criar a call. Tente novamente.",
                     ephemeral=True,
                 )
 
@@ -938,7 +940,7 @@ class Boost(commands.Cog):
                     view=self.family_view(guild_id, owner_id),
                 )
                 return await interaction.followup.send(
-                    f"Call criada: {voice_channel.mention}, mas não consegui salvar os dados no NeonDB.",
+                    f"<:wrong:1554659471223947324> Call criada: {voice_channel.mention}, mas não consegui salvar os dados no NeonDB.",
                     ephemeral=True,
                 )
             await interaction.message.edit(
@@ -946,7 +948,7 @@ class Boost(commands.Cog):
                 view=self.family_view(guild_id, owner_id),
             )
             await interaction.followup.send(
-                f"Call exclusiva criada: {voice_channel.mention}", ephemeral=True
+                f"<:correct:1554659481512841267> Call exclusiva criada: {voice_channel.mention}", ephemeral=True
             )
 
         return callback
@@ -955,21 +957,21 @@ class Boost(commands.Cog):
         async def callback(interaction: discord.Interaction) -> None:
             if interaction.user.id != owner_id:
                 return await interaction.response.send_message(
-                    "Esse painel pertence a outra pessoa.", ephemeral=True
+                    "<:wrong:1554659471223947324> Esse painel pertence a outra pessoa.", ephemeral=True
                 )
             if not self.can_manage_personal_role(interaction.user):
                 return await interaction.response.send_message(
-                    "Este comando requer VIP ou boost.", ephemeral=True
+                    "<:wrong:1554659471223947324> Este comando requer VIP ou boost.", ephemeral=True
                 )
             if interaction.guild_id != guild_id:
                 return await interaction.response.send_message(
-                    "Esse painel não pertence a este servidor.", ephemeral=True
+                    "<:wrong:1554659471223947324> Esse painel não pertence a este servidor.", ephemeral=True
                 )
             role_id = self.personal_roles.get(self.key(guild_id, owner_id))
             role = interaction.guild.get_role(role_id) if role_id else None
             if role is None:
                 return await interaction.response.send_message(
-                    "Não encontrei seu cargo personalizado. Use `,cargo` novamente.",
+                    "<:wrong:1554659471223947324> Não encontrei seu cargo personalizado. Use `,cargo` novamente.",
                     ephemeral=True,
                 )
             await interaction.response.send_modal(
@@ -982,21 +984,21 @@ class Boost(commands.Cog):
         async def callback(interaction: discord.Interaction) -> None:
             if interaction.user.id != owner_id:
                 return await interaction.response.send_message(
-                    "Esse painel pertence a outra pessoa.", ephemeral=True
+                    "<:wrong:1554659471223947324> Esse painel pertence a outra pessoa.", ephemeral=True
                 )
             if not self.can_manage_personal_role(interaction.user):
                 return await interaction.response.send_message(
-                    "Este comando requer VIP ou boost.", ephemeral=True
+                    "<:wrong:1554659471223947324> Este comando requer VIP ou boost.", ephemeral=True
                 )
             if interaction.guild_id != guild_id:
                 return await interaction.response.send_message(
-                    "Esse painel não pertence a este servidor.", ephemeral=True
+                    "<:wrong:1554659471223947324> Esse painel não pertence a este servidor.", ephemeral=True
                 )
             role_id = self.personal_roles.get(self.key(guild_id, owner_id))
             role = interaction.guild.get_role(role_id) if role_id else None
             if role is None:
                 return await interaction.response.send_message(
-                    "Não encontrei seu cargo personalizado. Use `,cargo` novamente.",
+                    "<:wrong:1554659471223947324> Não encontrei seu cargo personalizado. Use `,cargo` novamente.",
                     ephemeral=True,
                 )
             await self.start_icon_edit(interaction, role, family=False)
@@ -1040,12 +1042,12 @@ class Boost(commands.Cog):
     @commands.command(name="familia")
     async def family_command(self, ctx: commands.Context) -> None:
         if ctx.guild is None or not isinstance(ctx.author, discord.Member):
-            return await ctx.send("Este comando só pode ser usado em um servidor.")
+            return await ctx.send("<:wrong:1554659471223947324> Este comando só pode ser usado em um servidor.")
         if not self.can_manage_family(ctx.author):
             return await ctx.send(self.family_access_message(ctx.author))
         if self.pool is None:
             return await ctx.send(
-                "Não consegui conectar ao NeonDB. Confira a variável `DATABASE` no Render."
+                "<:wrong:1554659471223947324> Não consegui conectar ao meu banco de dados. Avise o salva."
             )
 
         key = self.key(ctx.guild.id, ctx.author.id)
@@ -1069,7 +1071,7 @@ class Boost(commands.Cog):
                     await self.save()
                 except Exception:
                     return await ctx.send(
-                        "Encontrei seu cargo de família, mas não consegui registrá-lo no NeonDB."
+                        "<:wrong:1554659471223947324> Encontrei seu cargo de família, mas não consegui registrá-lo na minha database."
                     )
 
         state = self.families.get(key)
@@ -1087,13 +1089,13 @@ class Boost(commands.Cog):
                 "família",
             )
         except ValueError as error:
-            return await ctx.send(str(error))
+            return await ctx.send(f"<:wrong:1554659471223947324> {error}")
         except discord.Forbidden:
             return await ctx.send(
-                "Não consegui criar ou atribuir o cargo. Confira minhas permissões e a hierarquia."
+                "<:wrong:1554659471223947324> Não consegui criar ou atribuir o cargo. Confira minhas permissões e a hierarquia."
             )
         except discord.HTTPException:
-            return await ctx.send("O Discord não conseguiu criar o cargo. Tente novamente.")
+            return await ctx.send("<:wrong:1554659471223947324> O Discord não conseguiu criar o cargo. Tente novamente.")
 
         self.families[key] = {"role_id": role.id, "voice_channel_id": None}
         try:
@@ -1105,12 +1107,12 @@ class Boost(commands.Cog):
             except discord.HTTPException:
                 pass
             return await ctx.send(
-                "Não consegui salvar sua família no NeonDB; o cargo criado foi removido."
+                "<:wrong:1554659471223947324> Não consegui salvar sua família no NeonDB; o cargo criado foi removido."
             )
         self.bot.add_view(self.family_view(ctx.guild.id, ctx.author.id))
         state = self.families[key]
         await ctx.send(
-            "Sua família foi criada. O cargo padrão já está com você; use os botões para editar, criar a call ou gerenciar membros.",
+            "<:correct:1554659481512841267> Sua família foi criada. O cargo padrão já está com você; use os botões para editar, criar a call ou gerenciar membros.",
             embed=self.family_embed(ctx.guild, ctx.author.id, state),
             view=self.family_view(ctx.guild.id, ctx.author.id),
         )
@@ -1118,12 +1120,12 @@ class Boost(commands.Cog):
     @commands.command(name="cargo")
     async def personal_role_command(self, ctx: commands.Context) -> None:
         if ctx.guild is None or not isinstance(ctx.author, discord.Member):
-            return await ctx.send("Este comando só pode ser usado em um servidor.")
+            return await ctx.send("<:wrong:1554659471223947324> Este comando só pode ser usado em um servidor.")
         if not self.can_manage_personal_role(ctx.author):
-            return await ctx.send("Este comando requer VIP ou boost.")
+            return await ctx.send("<:wrong:1554659471223947324> Este comando requer VIP ou boost.")
         if self.pool is None:
             return await ctx.send(
-                "Não consegui conectar ao NeonDB. Confira a variável `DATABASE` no Render."
+                "<:wrong:1554659471223947324> Não consegui conectar a minha database. Avise o salva."
             )
 
         key = self.key(ctx.guild.id, ctx.author.id)
@@ -1144,7 +1146,7 @@ class Boost(commands.Cog):
                     await self.save()
                 except Exception:
                     return await ctx.send(
-                        "Encontrei seu cargo personalizado, mas não consegui registrá-lo no NeonDB."
+                        "<:wrong:1554659471223947324> Encontrei seu cargo personalizado, mas não consegui registrá-lo no meu banco de dados."
                     )
 
         if role is None:
@@ -1156,13 +1158,13 @@ class Boost(commands.Cog):
                     "cargo",
                 )
             except ValueError as error:
-                return await ctx.send(str(error))
+                return await ctx.send(f"<:wrong:1554659471223947324> {error}")
             except discord.Forbidden:
                 return await ctx.send(
-                    "Não consegui criar ou atribuir o cargo. Confira minhas permissões e a hierarquia."
+                    "<:wrong:1554659471223947324> Não consegui criar ou atribuir o cargo. Confira minhas permissões e a hierarquia."
                 )
             except discord.HTTPException:
-                return await ctx.send("O Discord não conseguiu criar o cargo. Tente novamente.")
+                return await ctx.send("<:wrong:1554659471223947324> O Discord não conseguiu criar o cargo. Tente novamente.")
             self.personal_roles[key] = role.id
             try:
                 await self.save()
@@ -1173,7 +1175,7 @@ class Boost(commands.Cog):
                 except discord.HTTPException:
                     pass
                 return await ctx.send(
-                    "Não consegui salvar seu cargo no NeonDB; o cargo criado foi removido."
+                    "<:wrong:1554659471223947324> Não consegui salvar seu cargo no NeonDB; o cargo criado foi removido."
                 )
             self.bot.add_view(self.personal_view(ctx.guild.id, ctx.author.id))
 
