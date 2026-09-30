@@ -3,6 +3,7 @@ from flask import Flask, render_template_string, jsonify
 from threading import Thread
 import time
 import os
+import math
 
 app = Flask(__name__)
 
@@ -18,8 +19,10 @@ def format_uptime(seconds):
 
 
 def get_ping():
-    if bot_instance and bot_instance.latency is not None:
-        return round(bot_instance.latency * 1000)
+  if bot_instance is not None:
+    latency = bot_instance.latency
+    if latency is not None and math.isfinite(latency):
+      return round(latency * 1000)
     return None
 
 
