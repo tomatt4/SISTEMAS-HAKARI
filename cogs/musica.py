@@ -587,12 +587,27 @@ class Music(commands.Cog):
         ):
             await interaction.response.send_message("Não há música tocando.", ephemeral=True)
             return
-        embed = self._track_embed(
-            state.current,
-            interaction.user,
-            "pulada",
-            interaction.created_at,
+        current_track = state.current
+        next_track = state.queue[0] if state.queue else None
+        next_title = (
+            f"**{next_track.title}**"
+            if next_track
+            else "a fila acabou"
         )
+        embed = discord.Embed(
+            title="⏭️ Música pulada",
+            description=(
+                f"**{current_track.title}** foi pulada para {next_title}."
+            ),
+            color=discord.Color.yellow(),
+            timestamp=interaction.created_at,
+        )
+        if current_track.thumbnail:
+            embed.set_thumbnail(url=current_track.thumbnail)
+        embed.add_field(name="Artista", value=current_track.artist, inline=True)
+        if next_track:
+            embed.add_field(name="Próxima música", value=next_track.title, inline=True)
+        embed.set_footer(text=f"Música pulada por {interaction.user.display_name}")
         voice.stop()
         await interaction.response.send_message(embed=embed)
 
@@ -602,6 +617,8 @@ class Music(commands.Cog):
         if voice is None:
             return
         state = self._state_for(interaction.guild.id)
+        stopped_track = state.current
+        cleared_count = len(state.queue)
         state.queue.clear()
         state.current = None
         state.generation += 1
@@ -609,7 +626,24 @@ class Music(commands.Cog):
         state.elapsed = 0
         if voice.is_playing() or voice.is_paused():
             voice.stop()
-        await interaction.response.send_message("⏹️ Reprodução parada e fila limpa.")
+
+        embed = discord.Embed(
+            title="⏹️ Reprodução parada",
+            description=(
+                f"**{stopped_track.title}** foi interrompida."
+                if stopped_track
+                else "O player foi parado."
+            ),
+            color=discord.Color.red(),
+            timestamp=interaction.created_at,
+        )
+        embed.add_field(
+            name="Fila limpa",
+            value=f"{cleared_count} música(s) removida(s)",
+            inline=True,
+        )
+        embed.set_footer(text=f"Player parado por {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed)
 
     @app_commands.command(name="volume", description="Altera o volume do player")
     @app_commands.describe(percentual="Volume entre 1 e 100")
@@ -623,14 +657,90 @@ class Music(commands.Cog):
             return
 
         state = self._state_for(interaction.guild.id)
+        old_volume = state.volume
         state.volume = percentual
         source = voice.source
         if isinstance(source, discord.PCMVolumeTransformer):
             source.volume = percentual / 100
 
-        await interaction.response.send_message(
-            f"Volume do player definido para **{percentual}%**."
+        filled_blocks = round(percentual / 10)
+        volume_bar = f"{'▰' * filled_blocks}{'▱' * (10 - filled_blocks)}"
+        embed = discord.Embed(
+            title="🔊 Volume atualizado",
+            description=f"`{volume_bar}` **{percentual}%**",
+            color=discord.Color.blue(),
+            timestamp=interaction.created_at,
         )
+        embed.add_field(name="Antes", value=f"{old_volume}%", inline=True)
+        embed.add_field(name="Agora", value=f"{percentual}%", inline=True)
+        embed.set_footer(text=f"Ajustado por {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed)
+
+    @app_commands.command(
+        name="infoplayer",
+        description="Mostra informações e comandos do player de música",
+    )
+    async def infoplayer(self, interaction: discord.Interaction) -> None:
+        if interaction.guild is None:
+            await interaction.response.send_message(
+                "Esse comando só funciona dentro de um servidor.",
+                ephemeral=True,
+            )
+            return
+
+        voice = interaction.guild.voice_client
+        state = self.states.get(interaction.guild.id)
+        latency_ms = self.bot.latency * 1000
+
+        if voice is None or not voice.is_connected():
+            player_status = "Desconectado da call"
+        elif voice.is_playing():
+            player_status = "Tocando"
+        elif voice.is_paused():
+            player_status = "Pausado"
+        elif state and state.preparing:
+            player_status = "Carregando música"
+        else:
+            player_status = "Conectado, sem reprodução"
+
+        embed = discord.Embed(
+            title="🎧 Informações do player",
+            description="Status e comandos disponíveis para o player de música.",
+            color=discord.Color.green(),
+            timestamp=interaction.created_at,
+        )
+        embed.add_field(name="Fornecedor", value="SoundCloud", inline=True)
+        embed.add_field(
+            name="Qualidade",
+            value="256 Kbps · Áudio de qualidade ótima",
+            inline=True,
+        )
+        embed.add_field(
+            name="Latência do bot",
+            value=f"{latency_ms:.0f} ms",
+            inline=True,
+        )
+        embed.add_field(name="Estado do player", value=player_status, inline=True)
+        embed.add_field(
+            name="Canal de voz",
+            value=voice.channel.mention if voice and voice.is_connected() else "Nenhum",
+            inline=True,
+        )
+        embed.add_field(
+            name="Comandos na call",
+            value=(
+                "`/play` · `/pause` · `/resume` · `/skip` · `/stop`\n"
+                "`/volume` · `/queue` · `/leave` · `/autofix` · `/infoplayer`"
+            ),
+            inline=False,
+        )
+        embed.add_field(
+            name="Auto recuperação",
+            value="Se o bot travar, use `/autofix` para tentar consertar o player.",
+            inline=False,
+        )
+        embed.set_footer(text=f"Solicitado por {interaction.user.display_name}")
+        await interaction.response.send_message(embed=embed, ephemeral=True)
 
     @app_commands.command(
         name="autofix",
