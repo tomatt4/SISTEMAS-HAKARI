@@ -19,6 +19,7 @@ from discord.ext import commands
 
 YTDL_OPTIONS = {
     'format': 'bestaudio/best',
+    'format_sort': ['+abr', '+asr'],
     'noplaylist': True,
     'quiet': True,
     'no_warnings': True,
@@ -412,7 +413,14 @@ class Music(commands.Cog):
                     monitored_source,
                     volume=state.volume / 100,
                 )
-                voice.play(volume_source, after=after)
+                voice.play(
+                    volume_source,
+                    after=after,
+                    bitrate=256,
+                    fec=False,
+                    bandwidth="full",
+                    signal_type="music",
+                )
                 state.preparing = False
                 state.started_at = asyncio.get_running_loop().time()
                 state.elapsed = 0
