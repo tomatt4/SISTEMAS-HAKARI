@@ -1,5 +1,7 @@
 import asyncio
 import os
+import tempfile
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -23,18 +25,35 @@ FFMPEG_BEFORE_OPTIONS = (
 )
 
 
-def get_ytdl_options() -> dict:
+@contextmanager
+def youtube_dl_instance():
     options = YTDL_OPTIONS.copy()
     cookie_file = os.getenv("YOUTUBE_COOKIES_FILE", "").strip()
+    temporary_cookie_file = None
 
-    if cookie_file:
-        if not Path(cookie_file).is_file():
-            raise FileNotFoundError(
-                "O arquivo configurado em YOUTUBE_COOKIES_FILE não existe."
-            )
-        options["cookiefile"] = cookie_file
+    try:
+        if cookie_file:
+            source_cookie_file = Path(cookie_file)
+            if not source_cookie_file.is_file():
+                raise FileNotFoundError(
+                    "O arquivo configurado em YOUTUBE_COOKIES_FILE não existe."
+                )
 
-    return options
+            with tempfile.NamedTemporaryFile(
+                prefix="youtube-cookies-",
+                suffix=".txt",
+                delete=False,
+            ) as temporary_file:
+                temporary_cookie_file = Path(temporary_file.name)
+                temporary_file.write(source_cookie_file.read_bytes())
+
+            options["cookiefile"] = str(temporary_cookie_file)
+
+        with yt_dlp.YoutubeDL(options) as ytdl:
+            yield ytdl
+    finally:
+        if temporary_cookie_file:
+            temporary_cookie_file.unlink(missing_ok=True)
 
 
 def describe_youtube_error(error: Exception) -> str:
@@ -86,7 +105,7 @@ class MusicState:
 
 
 def extract_track(query: str) -> Track:
-    with yt_dlp.YoutubeDL(get_ytdl_options()) as ytdl:
+    with youtube_dl_instance() as ytdl:
         result = ytdl.extract_info(query, download=False)
 
     if result is None:
@@ -114,7 +133,7 @@ def extract_track(query: str) -> Track:
 
 
 def extract_audio_url(url: str) -> str:
-    with yt_dlp.YoutubeDL(get_ytdl_options()) as ytdl:
+    with youtube_dl_instance() as ytdl:
         result = ytdl.extract_info(url, download=False)
 
     if result is None:
