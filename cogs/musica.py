@@ -294,14 +294,14 @@ class Music(commands.Cog):
             interaction.user, discord.Member
         ):
             await interaction.response.send_message(
-                "Esse comando só funciona dentro de um servidor.",
+                "<:wrong:1554659471223947324> Esse comando só funciona dentro de um servidor.",
                 ephemeral=True,
             )
             return None
 
         if interaction.user.voice is None or interaction.user.voice.channel is None:
             await interaction.response.send_message(
-                "Entre em um canal de voz primeiro.",
+                "<:wrong:1554659471223947324> Entre em um canal de voz primeiro.",
                 ephemeral=True,
             )
             return None
@@ -309,13 +309,13 @@ class Music(commands.Cog):
         voice = interaction.guild.voice_client
         if voice is None:
             await interaction.response.send_message(
-                "Não estou em um canal de voz.",
+                "<:wrong:1554659471223947324> Não estou em um canal de voz.",
                 ephemeral=True,
             )
             return None
         elif voice.channel != interaction.user.voice.channel:
             await interaction.response.send_message(
-                "Você precisa estar no mesmo canal de voz que eu.",
+                "<:wrong:1554659471223947324> Você precisa estar no mesmo canal de voz que eu.",
                 ephemeral=True,
             )
             return None
@@ -333,14 +333,14 @@ class Music(commands.Cog):
         timestamp,
     ) -> discord.Embed:
         embed = discord.Embed(
-            title=track.title,
+            title=f"<a:MusicNotes:1554875954281717761> {track.title}",
             url=track.url,
             color=discord.Color.green(),
             timestamp=timestamp,
         )
         bot_user = self.bot.user
         embed.set_author(
-            name="🎵 Tocando Agora",
+            name="<:correct:1554659481512841267> Música adicionada à fila",
             icon_url=bot_user.display_avatar.url if bot_user else None,
         )
         if track.thumbnail:
@@ -463,7 +463,10 @@ class Music(commands.Cog):
                 state.last_error = None
                 state.last_failed_track = None
                 if channel:
-                    await channel.send(f"▶️ Tocando agora: **{track.title}**")
+                    await channel.send(
+                        f"▶️ Tocando agora: "
+                        f"<a:MusicNotes:1554875954281717761> **{track.title}**"
+                    )
                 await finished.wait()
             except asyncio.CancelledError:
                 raise
@@ -476,7 +479,8 @@ class Music(commands.Cog):
                 )
                 if channel:
                     await channel.send(
-                        f"Não consegui reproduzir **{track.title}**. "
+                        f"<:wrong:1554659471223947324> Não consegui reproduzir "
+                        f"<a:MusicNotes:1554875954281717761> **{track.title}**. "
                         f"{describe_youtube_error(error)}"
                     )
             finally:
@@ -493,14 +497,14 @@ class Music(commands.Cog):
     async def play(self, interaction: discord.Interaction, busca: str) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Esse comando só funciona dentro de um servidor.",
+                "<:wrong:1554659471223947324> Esse comando só funciona dentro de um servidor.",
                 ephemeral=True,
             )
             return
 
         if not isinstance(interaction.user, discord.Member) or interaction.user.voice is None:
             await interaction.response.send_message(
-                "Entre em um canal de voz primeiro.",
+                "<:wrong:1554659471223947324> Entre em um canal de voz primeiro.",
                 ephemeral=True,
             )
             return
@@ -511,7 +515,8 @@ class Music(commands.Cog):
             track = await asyncio.to_thread(extract_track, busca)
         except Exception as error:
             await interaction.followup.send(
-                f"Não encontrei essa música: {describe_youtube_error(error)}"
+                f"<:wrong:1554659471223947324> Não encontrei essa música: "
+                f"{describe_youtube_error(error)}"
             )
             return
 
@@ -521,11 +526,13 @@ class Music(commands.Cog):
                 voice = await interaction.user.voice.channel.connect()
             elif voice.channel != interaction.user.voice.channel:
                 await interaction.followup.send(
-                    "Você precisa estar no mesmo canal de voz que eu."
+                    "<:wrong:1554659471223947324> Você precisa estar no mesmo canal de voz que eu."
                 )
                 return
         except (discord.ClientException, discord.HTTPException) as error:
-            await interaction.followup.send(f"Não consegui entrar no canal: {error}")
+            await interaction.followup.send(
+                f"<:wrong:1554659471223947324> Não consegui entrar no canal: {error}"
+            )
             return
 
         track.requested_by = interaction.user.mention
@@ -549,7 +556,10 @@ class Music(commands.Cog):
         if voice is None:
             return
         if not voice.is_playing():
-            await interaction.response.send_message("Não há música tocando.", ephemeral=True)
+            await interaction.response.send_message(
+                "<:wrong:1554659471223947324> Não há música tocando.",
+                ephemeral=True,
+            )
             return
         state = self._state_for(interaction.guild.id)
         loop = asyncio.get_running_loop()
@@ -558,7 +568,8 @@ class Music(commands.Cog):
             state.started_at = None
         voice.pause()
         await interaction.response.send_message(
-            f"Música pausada em {format_elapsed(state.elapsed)}"
+            f"<:Pause:1554875566530764842> Música pausada em "
+            f"{format_elapsed(state.elapsed)}"
         )
 
     @app_commands.command(name="resume", description="Retoma a música pausada")
@@ -567,12 +578,17 @@ class Music(commands.Cog):
         if voice is None:
             return
         if not voice.is_paused():
-            await interaction.response.send_message("A música não está pausada.", ephemeral=True)
+            await interaction.response.send_message(
+                "<:wrong:1554659471223947324> A música não está pausada.",
+                ephemeral=True,
+            )
             return
         voice.resume()
         state = self._state_for(interaction.guild.id)
         state.started_at = asyncio.get_running_loop().time()
-        await interaction.response.send_message("▶️ Música retomada.")
+        await interaction.response.send_message(
+            "<:resume:1554875578472071188> Música retomada."
+        )
 
     @app_commands.command(name="skip", description="Pula para a próxima música")
     async def skip(self, interaction: discord.Interaction) -> None:
@@ -585,19 +601,23 @@ class Music(commands.Cog):
             or state.current is None
             or (not voice.is_playing() and not voice.is_paused())
         ):
-            await interaction.response.send_message("Não há música tocando.", ephemeral=True)
+            await interaction.response.send_message(
+                "<:wrong:1554659471223947324> Não há música tocando.",
+                ephemeral=True,
+            )
             return
         current_track = state.current
         next_track = state.queue[0] if state.queue else None
         next_title = (
-            f"**{next_track.title}**"
+            f"<a:MusicNotes:1554875954281717761> **{next_track.title}**"
             if next_track
             else "a fila acabou"
         )
         embed = discord.Embed(
             title="⏭️ Música pulada",
             description=(
-                f"**{current_track.title}** foi pulada para {next_title}."
+                f"<a:MusicNotes:1554875954281717761> **{current_track.title}** "
+                f"foi pulada para {next_title}."
             ),
             color=discord.Color.yellow(),
             timestamp=interaction.created_at,
@@ -606,7 +626,11 @@ class Music(commands.Cog):
             embed.set_thumbnail(url=current_track.thumbnail)
         embed.add_field(name="Artista", value=current_track.artist, inline=True)
         if next_track:
-            embed.add_field(name="Próxima música", value=next_track.title, inline=True)
+            embed.add_field(
+                name="Próxima música",
+                value=f"<a:MusicNotes:1554875954281717761> {next_track.title}",
+                inline=True,
+            )
         embed.set_footer(text=f"Música pulada por {interaction.user.display_name}")
         voice.stop()
         await interaction.response.send_message(embed=embed)
@@ -630,7 +654,8 @@ class Music(commands.Cog):
         embed = discord.Embed(
             title="⏹️ Reprodução parada",
             description=(
-                f"**{stopped_track.title}** foi interrompida."
+                f"<a:MusicNotes:1554875954281717761> **{stopped_track.title}** "
+                "foi interrompida."
                 if stopped_track
                 else "O player foi parado."
             ),
@@ -683,7 +708,7 @@ class Music(commands.Cog):
     async def infoplayer(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Esse comando só funciona dentro de um servidor.",
+                "<:wrong:1554659471223947324> Esse comando só funciona dentro de um servidor.",
                 ephemeral=True,
             )
             return
@@ -704,7 +729,7 @@ class Music(commands.Cog):
             player_status = "Conectado, sem reprodução"
 
         embed = discord.Embed(
-            title="🎧 Informações do player",
+            title="<:info:1554875585359118547> Informações do player",
             description="Status e comandos disponíveis para o player de música.",
             color=discord.Color.green(),
             timestamp=interaction.created_at,
@@ -751,7 +776,7 @@ class Music(commands.Cog):
             interaction.user, discord.Member
         ):
             await interaction.response.send_message(
-                "Esse comando só funciona dentro de um servidor.",
+                "<:wrong:1554659471223947324> Esse comando só funciona dentro de um servidor.",
                 ephemeral=True,
             )
             return
@@ -759,7 +784,7 @@ class Music(commands.Cog):
         member_voice = interaction.user.voice
         if member_voice is None or member_voice.channel is None:
             await interaction.response.send_message(
-                "Entre em um canal de voz para verificar o player.",
+                "<:wrong:1554659471223947324> Entre em um canal de voz para verificar o player.",
                 ephemeral=True,
             )
             return
@@ -779,7 +804,7 @@ class Music(commands.Cog):
                 connection_repaired = True
         except (discord.ClientException, discord.HTTPException) as error:
             await interaction.followup.send(
-                "Não consegui recuperar a conexão de voz. "
+                "<:wrong:1554659471223947324> Não consegui recuperar a conexão de voz. "
                 f"Chame o desenvolvedor para corrigir. ({error})",
                 ephemeral=True,
             )
@@ -804,7 +829,8 @@ class Music(commands.Cog):
             if track_to_retry.recovery_attempts >= 1:
                 detail = state.last_error or "a faixa continuou sem áudio após a retentativa"
                 await interaction.followup.send(
-                    "O player já tentou recuperar essa faixa uma vez, mas não "
+                    "<:wrong:1554659471223947324> O player já tentou recuperar "
+                    "essa faixa uma vez, mas não "
                     f"conseguiu. Chame o desenvolvedor para corrigir. ({detail})",
                     ephemeral=True,
                 )
@@ -812,7 +838,8 @@ class Music(commands.Cog):
 
             await self._restart_track(guild, state, voice, track_to_retry)
             await interaction.followup.send(
-                f"Player recuperado; reiniciei **{track_to_retry.title}** "
+                f"Player recuperado; reiniciei "
+                f"<a:MusicNotes:1554875954281717761> **{track_to_retry.title}** "
                 "uma vez para testar o áudio.",
                 ephemeral=True,
             )
@@ -860,7 +887,7 @@ class Music(commands.Cog):
     async def queue(self, interaction: discord.Interaction) -> None:
         if interaction.guild is None:
             await interaction.response.send_message(
-                "Esse comando só funciona dentro de um servidor.",
+                "<:wrong:1554659471223947324> Esse comando só funciona dentro de um servidor.",
                 ephemeral=True,
             )
             return
@@ -872,9 +899,13 @@ class Music(commands.Cog):
 
         lines = []
         if state.current:
-            lines.append(f"▶️ Tocando: **{state.current.title}**")
+            lines.append(
+                f"▶️ Tocando: <a:MusicNotes:1554875954281717761> "
+                f"**{state.current.title}**"
+            )
         lines.extend(
-            f"{index}. {track.title} (pedido por {track.requested_by})"
+            f"{index}. <a:MusicNotes:1554875954281717761> {track.title} "
+            f"(pedido por {track.requested_by})"
             for index, track in enumerate(state.queue, start=1)
         )
         await interaction.response.send_message("\n".join(lines)[:1900])
