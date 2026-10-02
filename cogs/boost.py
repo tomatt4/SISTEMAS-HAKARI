@@ -4,6 +4,7 @@ import json
 import os
 import re
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import aiohttp
 import asyncpg
@@ -211,7 +212,11 @@ class Boost(commands.Cog):
             except (OSError, json.JSONDecodeError) as error:
                 print(f"Não foi possível carregar os dados do boost: {error}")
 
-        database_url = os.getenv("DATABASE") or os.getenv("DATABASE_URL")
+        database_url = os.getenv("DATABASE", "").strip()
+        database_variable = "DATABASE"
+        if not database_url:
+            database_url = os.getenv("DATABASE_URL", "").strip()
+            database_variable = "DATABASE_URL"
         if not database_url:
             print("NeonDB indisponível para o cog boost: variável DATABASE não configurada.")
             return
@@ -256,9 +261,11 @@ class Boost(commands.Cog):
             if self.pool is not None:
                 await self.pool.close()
                 self.pool = None
+            database_host = urlsplit(database_url).hostname or "não identificado"
             print(
-                "Não foi possível inicializar o NeonDB no cog boost: "
-                f"{type(error).__name__}. Confira a variável DATABASE e os logs do Render."
+                "Não foi possível inicializar o NeonDB no cog boost "
+                f"(variável={database_variable}, host={database_host}): "
+                f"{type(error).__name__}: {error}"
             )
             return
 
