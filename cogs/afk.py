@@ -151,6 +151,10 @@ class AFK(commands.Cog):
         if message.author.id in self.afk_users:
             self.afk_users.pop(message.author.id)
 
+        context = await self.bot.get_context(message)
+        if context.valid:
+            return
+
         afk_mentioned = []
 
         # Verificar resposta a alguém AFK

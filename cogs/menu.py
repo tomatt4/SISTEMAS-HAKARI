@@ -1,0 +1,799 @@
+import json
+import os
+from pathlib import Path
+
+import asyncpg
+import discord
+from discord import app_commands
+from discord.ext import commands
+
+
+DEVELOPER_ID = 1543385262984396852
+CONFIG_PATH = Path(__file__).resolve().parent.parent / "data" / "guild_config.json"
+MODULES = {
+    "admin": "Moderação",
+    "afk": "AFK",
+    "boost": "Boost",
+    "musica": "Música",
+    "resenha": "Resenha",
+    "sohakari": "So Hakari",
+    "tomate": "Tomates",
+    "utilidades": "Utilidades",
+}
+
+SETTINGS = {
+    "boost": {
+        "label": "Sistema de Boost",
+        "items": {
+            "booster_role": ("Cargo Booster", "role"),
+            "vip_full_role": ("Cargo VIP completo", "role"),
+            "vip_personal_role": ("Cargo VIP pessoal", "role"),
+            "role_position_upper": ("Limite superior dos cargos", "role"),
+            "role_position_lower": ("Posição dos cargos pessoais", "role"),
+            "family_position_lower": ("Posição dos cargos de família", "role"),
+            "repair_below_role": ("Cargo de referência para reparo", "role"),
+            "family_member_limit": ("Limite de membros da família", "number"),
+        },
+    },
+    "tomate": {
+        "label": "Sistema de Tomates",
+        "items": {
+            "target_pick_roles": ("Cargos que escolhem o alvo", "roles"),
+            "reduced_cooldown_roles": ("Cargos com intervalo reduzido", "roles"),
+            "default_cooldown": ("Intervalo padrão em segundos", "number"),
+            "reduced_cooldown": ("Intervalo reduzido em segundos", "number"),
+            "block_owner_tomatoes": ("Bloquear tomates no dono", "toggle"),
+        },
+    },
+    "modules": {
+        "label": "Módulos",
+        "items": {
+            f"module_{module}": (f"Ativar {label}", "toggle")
+            for module, label in MODULES.items()
+        },
+    },
+}
+
+
+class NumberSettingModal(discord.ui.Modal):
+    def __init__(self, menu: "Menu", guild_id: int, key: str, label: str):
+        super().__init__(title=f"Configurar {label}")
+        self.menu = menu
+        self.guild_id = guild_id
+        self.key = key
+        self.value_input = discord.ui.TextInput(
+            label=label,
+            placeholder="Digite um número inteiro",
+            min_length=1,
+            max_length=4,
+        )
+        self.add_item(self.value_input)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        try:
+            value = int(self.value_input.value)
+            if value < 1 or value > 9999:
+                raise ValueError
+            if self.key == "family_member_limit" and value > 25:
+                raise ValueError
+        except ValueError:
+            return await interaction.response.send_message(
+                "Informe um número entre 1 e 9999.", ephemeral=True
+            )
+        await self.menu.set_value(self.guild_id, self.key, value)
+        await interaction.response.send_message(
+            f"Configuração salva: **{value}**.", ephemeral=True
+        )
+
+
+class CategorySelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label=details["label"], value=key)
+            for key, details in SETTINGS.items()
+        ]
+        super().__init__(
+            placeholder="Selecione uma área para configurar",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        view.category = self.values[0]
+        view.setting = None
+        view.rebuild()
+        await interaction.response.edit_message(
+            embed=view.embed(interaction.guild), view=view
+        )
+
+
+class SettingSelect(discord.ui.Select):
+    def __init__(self, view: "MenuView"):
+        category = SETTINGS[view.category]
+        options = [
+            discord.SelectOption(label=label, value=key, description=f"Tipo: {kind}")
+            for key, (label, kind) in category["items"].items()
+        ]
+        super().__init__(
+            placeholder="Escolha uma configuração",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        view.setting = self.values[0]
+        view.rebuild()
+        await interaction.response.edit_message(
+            embed=view.embed(interaction.guild), view=view
+        )
+
+
+class RoleSettingSelect(discord.ui.RoleSelect):
+    def __init__(self, view: "MenuView", multiple: bool):
+        super().__init__(
+            placeholder="Selecione cargo(s) deste servidor",
+            min_values=0,
+            max_values=10 if multiple else 1,
+        )
+        self.multiple = multiple
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        if self.multiple:
+            value = [role.id for role in self.values]
+        else:
+            value = self.values[0].id if self.values else None
+        await view.menu.set_value(interaction.guild_id, view.setting, value)
+        view.rebuild()
+        await interaction.response.edit_message(
+            embed=view.embed(interaction.guild), view=view
+        )
+
+
+class NumberSettingButton(discord.ui.Button):
+    def __init__(self, view: "MenuView", label: str):
+        super().__init__(label=f"Definir: {label}", style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        label = SETTINGS[view.category]["items"][view.setting][0]
+        await interaction.response.send_modal(
+            NumberSettingModal(view.menu, interaction.guild_id, view.setting, label)
+        )
+
+
+class ToggleSettingButton(discord.ui.Button):
+    def __init__(self, view: "MenuView", enabled: bool):
+        label = "Desativar" if enabled else "Ativar"
+        super().__init__(label=label, style=discord.ButtonStyle.success if not enabled else discord.ButtonStyle.secondary)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        current = bool(view.menu.get_value(interaction.guild_id, view.setting, False))
+        await view.menu.set_value(interaction.guild_id, view.setting, not current)
+        view.rebuild()
+        await interaction.response.edit_message(
+            embed=view.embed(interaction.guild), view=view
+        )
+
+
+class AccessButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Gerenciar acessos", style=discord.ButtonStyle.secondary, row=4)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "Somente o desenvolvedor pode conceder ou remover acessos.",
+                ephemeral=True,
+            )
+        await interaction.response.edit_message(
+            embed=view.menu.access_embed(interaction.guild),
+            view=AccessView(view.menu, interaction.guild_id),
+        )
+
+
+class BackButton(discord.ui.Button):
+    def __init__(self, menu: "Menu"):
+        super().__init__(label="Voltar ao painel", style=discord.ButtonStyle.secondary, row=4)
+        self.menu = menu
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view = MenuView(self.menu, interaction.guild_id, interaction.user.id)
+        await interaction.response.edit_message(
+            embed=view.embed(interaction.guild), view=view
+        )
+
+
+class RestrictedAreaButton(discord.ui.Button):
+    def __init__(self, menu: "Menu"):
+        super().__init__(label="Área Restrita", style=discord.ButtonStyle.danger, row=4)
+        self.menu = menu
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "A Área Restrita é exclusiva do desenvolvedor.", ephemeral=True
+            )
+        await interaction.response.edit_message(
+            embed=self.menu.restricted_embed(),
+            view=DeveloperToolsView(self.menu, interaction.guild_id),
+        )
+
+
+class DeveloperActionSelect(discord.ui.Select):
+    def __init__(self):
+        super().__init__(
+            placeholder="Escolha uma ferramenta",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(label="Desligar bot", value="shutdown"),
+                discord.SelectOption(label="Dessincronizar comando global", value="unsync"),
+                discord.SelectOption(label="Resetar todas as configurações", value="reset"),
+                discord.SelectOption(label="Sincronizar comandos globais", value="sync"),
+            ],
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "A Área Restrita é exclusiva do desenvolvedor.", ephemeral=True
+            )
+        view: DeveloperToolsView = self.view
+        view.action = self.values[0]
+        await interaction.response.defer()
+
+
+class DeveloperCommandSelect(discord.ui.Select):
+    def __init__(self, menu: "Menu"):
+        commands_list = menu.bot.tree.get_commands()[:25]
+        options = [
+            discord.SelectOption(
+                label=command.name[:100],
+                value=command.name,
+                description=(command.description or "Sem descrição")[:100],
+            )
+            for command in commands_list
+        ]
+        super().__init__(
+            placeholder="Comando global para dessincronizar",
+            min_values=1,
+            max_values=1,
+            options=options or [
+                discord.SelectOption(label="Nenhum comando global", value="_none")
+            ],
+            disabled=not options,
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "A Área Restrita é exclusiva do desenvolvedor.", ephemeral=True
+            )
+        await interaction.response.defer()
+
+
+class RunDeveloperActionButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Continuar", style=discord.ButtonStyle.primary, row=2)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "A Área Restrita é exclusiva do desenvolvedor.", ephemeral=True
+            )
+        view: DeveloperToolsView = self.view
+        if view.action is None:
+            return await interaction.response.send_message(
+                "Escolha uma ferramenta primeiro.", ephemeral=True
+            )
+        command_name = (
+            view.command_select.values[0]
+            if view.command_select.values
+            else ""
+        )
+        if view.action == "unsync" and command_name == "_none":
+            return await interaction.response.send_message(
+                "Não há comandos globais para dessincronizar.", ephemeral=True
+            )
+        labels = {
+            "shutdown": "desligar o bot",
+            "unsync": f"dessincronizar globalmente `/{command_name}`",
+            "reset": "apagar as configurações de todos os servidores",
+            "sync": "sincronizar novamente todos os comandos globais",
+        }
+        await interaction.response.edit_message(
+            embed=discord.Embed(
+                title="Confirmar ação restrita",
+                description=f"Você está prestes a **{labels[view.action]}**.\n\nConfirme para executar.",
+                color=discord.Color.red(),
+            ),
+            view=ConfirmDeveloperActionView(
+                view.menu, view.guild_id, view.action, command_name
+            ),
+        )
+
+
+class DeveloperToolsView(discord.ui.View):
+    def __init__(self, menu: "Menu", guild_id: int):
+        super().__init__(timeout=300)
+        self.menu = menu
+        self.guild_id = guild_id
+        self.action = None
+        self.action_select = DeveloperActionSelect()
+        self.command_select = DeveloperCommandSelect(menu)
+        self.add_item(self.action_select)
+        self.add_item(self.command_select)
+        self.add_item(RunDeveloperActionButton())
+        self.add_item(BackButton(menu))
+
+
+class ConfirmDeveloperActionButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Confirmar", style=discord.ButtonStyle.danger, row=0)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "A Área Restrita é exclusiva do desenvolvedor.", ephemeral=True
+            )
+        view: ConfirmDeveloperActionView = self.view
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            result = await view.menu.execute_restricted_action(
+                interaction.user.id, view.action, view.command_name
+            )
+        except Exception as error:
+            return await interaction.followup.send(
+                f"A ação falhou: {type(error).__name__}: {error}", ephemeral=True
+            )
+        await interaction.followup.send(result, ephemeral=True)
+        if view.action == "shutdown":
+            await view.menu.bot.close()
+
+
+class CancelDeveloperActionButton(discord.ui.Button):
+    def __init__(self, menu: "Menu", guild_id: int):
+        super().__init__(label="Cancelar", style=discord.ButtonStyle.secondary, row=0)
+        self.menu = menu
+        self.guild_id = guild_id
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "A Área Restrita é exclusiva do desenvolvedor.", ephemeral=True
+            )
+        await interaction.response.edit_message(
+            embed=self.menu.restricted_embed(),
+            view=DeveloperToolsView(self.menu, self.guild_id),
+        )
+
+
+class ConfirmDeveloperActionView(discord.ui.View):
+    def __init__(
+        self, menu: "Menu", guild_id: int, action: str, command_name: str
+    ):
+        super().__init__(timeout=60)
+        self.menu = menu
+        self.action = action
+        self.command_name = command_name
+        self.add_item(ConfirmDeveloperActionButton())
+        self.add_item(CancelDeveloperActionButton(menu, guild_id))
+
+
+class AccessModeSelect(discord.ui.Select):
+    def __init__(self):
+        super().__init__(
+            placeholder="Escolha a ação para os usuários selecionados",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(label="Conceder acesso", value="grant"),
+                discord.SelectOption(label="Remover acesso", value="revoke"),
+            ],
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        await interaction.response.defer()
+
+
+class AccessUserSelect(discord.ui.UserSelect):
+    def __init__(self):
+        super().__init__(
+            placeholder="Selecione usuários deste servidor",
+            min_values=1,
+            max_values=10,
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: AccessView = self.view
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "Somente o desenvolvedor pode conceder ou remover acessos.",
+                ephemeral=True,
+            )
+        mode = view.mode_select.values[0] if view.mode_select.values else None
+        if mode is None:
+            return await interaction.response.send_message(
+                "Escolha primeiro conceder ou remover acesso.", ephemeral=True
+            )
+        current = set(view.menu.access_for(interaction.guild_id))
+        for user in self.values:
+            if mode == "grant":
+                current.add(user.id)
+            else:
+                current.discard(user.id)
+        await view.menu.set_access(interaction.guild_id, current)
+        await interaction.response.edit_message(
+            embed=view.menu.access_embed(interaction.guild), view=view
+        )
+
+
+class AccessView(discord.ui.View):
+    def __init__(self, menu: "Menu", guild_id: int):
+        super().__init__(timeout=300)
+        self.menu = menu
+        self.mode_select = AccessModeSelect()
+        self.add_item(self.mode_select)
+        self.add_item(AccessUserSelect())
+        self.add_item(BackButton(menu))
+
+
+class MenuView(discord.ui.View):
+    def __init__(self, menu: "Menu", guild_id: int, user_id: int | None = None):
+        super().__init__(timeout=300)
+        self.menu = menu
+        self.guild_id = guild_id
+        self.user_id = user_id
+        self.category = None
+        self.setting = None
+        self.rebuild()
+
+    def embed(self, guild: discord.Guild) -> discord.Embed:
+        embed = self.menu.overview_embed(guild)
+        if not self.category or not self.setting:
+            return embed
+        label, kind = SETTINGS[self.category]["items"][self.setting]
+        value = self.menu.get_value(guild.id, self.setting)
+        if value is None:
+            display = "Desconfigurado"
+        elif kind == "role":
+            role = guild.get_role(int(value))
+            display = role.mention if role else "Cargo removido do servidor"
+        elif kind == "roles":
+            mentions = [
+                role.mention
+                for role_id in value
+                if (role := guild.get_role(int(role_id))) is not None
+            ]
+            display = ", ".join(mentions) if mentions else "Nenhum cargo configurado"
+        elif kind == "toggle":
+            display = "Ativado" if value else "Desativado"
+        else:
+            display = str(value)
+        embed.add_field(name=label, value=display, inline=False)
+        return embed
+
+    def rebuild(self) -> None:
+        self.clear_items()
+        self.add_item(CategorySelect())
+        if self.category:
+            self.add_item(SettingSelect(self))
+        if self.setting:
+            kind = SETTINGS[self.category]["items"][self.setting][1]
+            if kind == "role":
+                self.add_item(RoleSettingSelect(self, multiple=False))
+            elif kind == "roles":
+                self.add_item(RoleSettingSelect(self, multiple=True))
+            elif kind == "number":
+                label = SETTINGS[self.category]["items"][self.setting][0]
+                self.add_item(NumberSettingButton(self, label))
+            elif kind == "toggle":
+                enabled = self.menu.get_value(self.guild_id, self.setting, False)
+                self.add_item(ToggleSettingButton(self, bool(enabled)))
+        self.add_item(AccessButton())
+        if self.user_id == DEVELOPER_ID:
+            self.add_item(RestrictedAreaButton(self.menu))
+
+
+class Menu(commands.Cog):
+    def __init__(self, bot: commands.Bot):
+        self.bot = bot
+        self.config: dict[str, dict] = {}
+        self.invites: dict[int, str] = {}
+        self.pool: asyncpg.Pool | None = None
+
+    async def cog_load(self) -> None:
+        if CONFIG_PATH.exists():
+            try:
+                self.config = json.loads(CONFIG_PATH.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError) as error:
+                print(f"Não foi possível carregar as configurações locais: {error}")
+
+        database_url = os.getenv("DATABASE") or os.getenv("DATABASE_URL")
+        if not database_url:
+            return
+        try:
+            self.pool = await asyncpg.create_pool(
+                dsn=database_url,
+                ssl="require",
+                min_size=1,
+                max_size=3,
+                command_timeout=20,
+            )
+            await self.pool.execute(
+                """
+                CREATE TABLE IF NOT EXISTS hakari_guild_config (
+                    guild_id BIGINT PRIMARY KEY,
+                    config JSONB NOT NULL,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            if self.config:
+                await self.pool.executemany(
+                    """
+                    INSERT INTO hakari_guild_config (guild_id, config)
+                    VALUES ($1, $2::jsonb)
+                    ON CONFLICT (guild_id) DO NOTHING
+                    """,
+                    [
+                        (int(guild_id), json.dumps(value))
+                        for guild_id, value in self.config.items()
+                    ],
+                )
+            rows = await self.pool.fetch(
+                "SELECT guild_id, config FROM hakari_guild_config"
+            )
+            for row in rows:
+                stored_config = row["config"]
+                self.config[str(row["guild_id"])] = (
+                    json.loads(stored_config)
+                    if isinstance(stored_config, str)
+                    else stored_config
+                )
+        except Exception as error:
+            if self.pool is not None:
+                await self.pool.close()
+                self.pool = None
+            print(
+                "Não foi possível iniciar a persistência SQL do menu; "
+                f"usando arquivo local ({type(error).__name__})."
+            )
+
+    async def save(self) -> None:
+        CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        temporary_path = CONFIG_PATH.with_suffix(".tmp")
+        temporary_path.write_text(
+            json.dumps(self.config, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        temporary_path.replace(CONFIG_PATH)
+        if self.pool is not None:
+            try:
+                await self.pool.executemany(
+                    """
+                    INSERT INTO hakari_guild_config (guild_id, config)
+                    VALUES ($1, $2::jsonb)
+                    ON CONFLICT (guild_id) DO UPDATE SET
+                        config = EXCLUDED.config,
+                        updated_at = NOW()
+                    """,
+                    [
+                        (int(guild_id), json.dumps(value))
+                        for guild_id, value in self.config.items()
+                    ],
+                )
+            except Exception as error:
+                print(
+                    "Não foi possível salvar as configurações no SQL: "
+                    f"{type(error).__name__}: {error}"
+                )
+
+    async def cog_unload(self) -> None:
+        if self.pool is not None:
+            await self.pool.close()
+
+    def get_value(self, guild_id: int, key: str, default=None):
+        return self.config.get(str(guild_id), {}).get("settings", {}).get(key, default)
+
+    async def set_value(self, guild_id: int, key: str, value) -> None:
+        guild_config = self.config.setdefault(str(guild_id), {})
+        guild_config.setdefault("settings", {})[key] = value
+        await self.save()
+
+    def access_for(self, guild_id: int) -> list[int]:
+        return self.config.get(str(guild_id), {}).get("menu_users", [])
+
+    async def set_access(self, guild_id: int, users: set[int]) -> None:
+        guild_config = self.config.setdefault(str(guild_id), {})
+        guild_config["menu_users"] = sorted(users - {DEVELOPER_ID})
+        await self.save()
+
+    def can_access(self, user_id: int, guild_id: int) -> bool:
+        return user_id == DEVELOPER_ID or user_id in self.access_for(guild_id)
+
+    def module_configured(self, guild_id: int, module: str) -> bool:
+        if module not in MODULES or not self.get_value(
+            guild_id, f"module_{module}", False
+        ):
+            return False
+        if module == "boost":
+            required_settings = (
+                "booster_role",
+                "vip_full_role",
+                "vip_personal_role",
+                "role_position_upper",
+                "role_position_lower",
+                "family_position_lower",
+                "repair_below_role",
+            )
+            return all(
+                self.get_value(guild_id, key) is not None
+                for key in required_settings
+            )
+        return True
+
+    def overview_embed(self, guild: discord.Guild) -> discord.Embed:
+        latency = round(self.bot.latency * 1000)
+        embed = discord.Embed(
+            title=f"Painel de configuração | {guild.name}",
+            description=(
+                f"**Membros:** {guild.member_count or 0}\n"
+                f"**Latência:** {latency} ms\n"
+                f"**Convite:** {self.invite_link(guild)}"
+            ),
+            color=discord.Color.blurple(),
+        )
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+        embed.set_footer(text=f"Servidor {guild.id} · configurações isoladas por servidor")
+        return embed
+
+    def invite_link(self, guild: discord.Guild) -> str:
+        if guild.vanity_url:
+            return guild.vanity_url
+        return self.invites.get(guild.id, "Gerando convite...")
+
+    async def ensure_invite(self, guild: discord.Guild) -> None:
+        if guild.vanity_url or guild.id in self.invites:
+            return
+        for channel in guild.text_channels:
+            permissions = channel.permissions_for(guild.me) if guild.me else None
+            if permissions and permissions.create_instant_invite:
+                try:
+                    invite = await channel.create_invite(
+                        max_age=0,
+                        max_uses=0,
+                        unique=False,
+                        reason="Link exibido no painel de configuração do bot",
+                    )
+                    self.invites[guild.id] = invite.url
+                    return
+                except discord.HTTPException:
+                    continue
+        self.invites[guild.id] = "Sem permissão para gerar convite"
+
+    def access_embed(self, guild: discord.Guild) -> discord.Embed:
+        users = self.access_for(guild.id)
+        mentions = "\n".join(f"<@{user_id}>" for user_id in users) or "Nenhum usuário adicional"
+        embed = discord.Embed(
+            title=f"Acessos do menu | {guild.name}",
+            description=(
+                f"**Desenvolvedor:** <@{DEVELOPER_ID}>\n"
+                f"**Acesso neste servidor:**\n{mentions}"
+            ),
+            color=discord.Color.blurple(),
+        )
+        if guild.icon:
+            embed.set_thumbnail(url=guild.icon.url)
+        return embed
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.guild_id is None or not self.can_access(interaction.user.id, interaction.guild_id):
+            await interaction.response.send_message(
+                "Você não tem permissão para acessar o painel neste servidor.",
+                ephemeral=True,
+            )
+            return False
+        return True
+
+    def restricted_embed(self) -> discord.Embed:
+        embed = discord.Embed(
+            title="Área Restrita do Desenvolvedor",
+            description="As ações desta área podem afetar todos os servidores conectados.",
+            color=discord.Color.red(),
+        )
+        embed.add_field(
+            name="Servidores conectados",
+            value=str(len(self.bot.guilds)),
+            inline=True,
+        )
+        embed.add_field(
+            name="Latência", value=f"{round(self.bot.latency * 1000)} ms", inline=True
+        )
+        embed.add_field(
+            name="Cogs carregadas",
+            value=", ".join(self.bot.cogs.keys()) or "Nenhuma",
+            inline=False,
+        )
+        return embed
+
+    async def execute_restricted_action(
+        self, actor_id: int, action: str, command_name: str
+    ) -> str:
+        if actor_id != DEVELOPER_ID:
+            raise PermissionError("A Área Restrita é exclusiva do desenvolvedor.")
+        if action == "shutdown":
+            return "Encerrando o bot."
+        if action == "reset":
+            if self.pool is not None:
+                await self.pool.execute("DELETE FROM hakari_guild_config")
+            self.config.clear()
+            await self.save()
+            return "Configurações do painel e permissões de acesso resetadas em todos os servidores."
+        if action == "sync":
+            synced_commands = await self.bot.tree.sync()
+            return f"{len(synced_commands)} comandos globais sincronizados."
+        if action == "unsync":
+            command = self.bot.tree.get_command(command_name)
+            if command is None:
+                raise ValueError(f"O comando `/{command_name}` não está registrado localmente.")
+            self.bot.tree.remove_command(command_name)
+            try:
+                synced_commands = await self.bot.tree.sync()
+            except Exception:
+                self.bot.tree.add_command(command)
+                raise
+            return (
+                f"`/{command_name}` dessincronizado globalmente. "
+                f"Restaram {len(synced_commands)} comandos globais."
+            )
+        raise ValueError("Ação restrita desconhecida.")
+
+    @app_commands.command(name="menu", description="Abre o painel avançado de configuração do servidor")
+    @app_commands.guild_only()
+    async def menu_command(self, interaction: discord.Interaction) -> None:
+        if not self.can_access(interaction.user.id, interaction.guild_id):
+            return await interaction.response.send_message(
+                "Você não tem permissão para acessar o painel neste servidor.",
+                ephemeral=True,
+            )
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        await self.ensure_invite(interaction.guild)
+        view = MenuView(self, interaction.guild_id, interaction.user.id)
+        await interaction.followup.send(
+            embed=self.overview_embed(interaction.guild), view=view, ephemeral=True
+        )
+
+    @app_commands.command(name="menu_sync", description="Atualiza os comandos globais do bot")
+    @app_commands.guild_only()
+    async def sync_command(self, interaction: discord.Interaction) -> None:
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "Somente o desenvolvedor pode atualizar os comandos.", ephemeral=True
+            )
+        await interaction.response.defer(ephemeral=True, thinking=True)
+        try:
+            commands_synced = await self.bot.tree.sync()
+        except discord.HTTPException as error:
+            return await interaction.followup.send(
+                f"Falha ao sincronizar comandos: {error}", ephemeral=True
+            )
+        await interaction.followup.send(
+            f"Sincronizados {len(commands_synced)} comandos globais. A publicação pode levar até uma hora.",
+            ephemeral=True,
+        )
+
+
+async def setup(bot: commands.Bot) -> None:
+    await bot.add_cog(Menu(bot))

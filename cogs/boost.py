@@ -12,15 +12,7 @@ from PIL import Image, UnidentifiedImageError
 from discord.ext import commands
 
 
-BOOSTER_ROLE_ID = 1553817043076259911
-VIP_FULL_ROLE_ID = 1553891097867190382
-VIP_PERSONAL_ROLE_ID = 1521927629282738398
-ROLE_POSITION_UPPER_ID = 1553842552237457510
-ROLE_POSITION_LOWER_ID = 1553840828684963860
-FAMILY_POSITION_LOWER_ID = 1553841276774912220
-REPAIR_BELOW_ROLE_ID = 1553832823264116796
 MANAGED_ROLE_PREFIXES = ("família -", "cargo -")
-FAMILY_MEMBER_LIMIT = 15
 
 
 class RoleEditModal(discord.ui.Modal):
@@ -115,10 +107,11 @@ class RoleEditModal(discord.ui.Modal):
 
 
 class FamilyMemberSelect(discord.ui.UserSelect):
-    def __init__(self, cog, owner_id: int, adding: bool):
+    def __init__(self, cog, owner_id: int, adding: bool, member_limit: int):
         self.cog = cog
         self.owner_id = owner_id
         self.adding = adding
+        self.member_limit = member_limit
         super().__init__(
             placeholder=(
                 "Escolha quem adicionar"
@@ -126,7 +119,7 @@ class FamilyMemberSelect(discord.ui.UserSelect):
                 else "Escolha quem remover"
             ),
             min_values=1,
-            max_values=FAMILY_MEMBER_LIMIT,
+            max_values=member_limit,
             custom_id=f"boost:members:{owner_id}:{'add' if adding else 'remove'}",
         )
 
@@ -157,9 +150,9 @@ class FamilyMemberSelect(discord.ui.UserSelect):
 
         if self.adding:
             new_members = [member for member in chosen_members if member not in current_members]
-            if len(current_members) + len(new_members) > FAMILY_MEMBER_LIMIT:
+            if len(current_members) + len(new_members) > self.member_limit:
                 return await interaction.response.send_message(
-                    f"<:wrong:1554659471223947324> A família pode ter no máximo {FAMILY_MEMBER_LIMIT} pessoas, contando você.",
+                    f"<:wrong:1554659471223947324> A família pode ter no máximo {self.member_limit} pessoas, contando você.",
                     ephemeral=True,
                 )
             try:
@@ -373,6 +366,18 @@ class Boost(commands.Cog):
     def key(self, guild_id: int, owner_id: int) -> str:
         return f"{guild_id}:{owner_id}"
 
+    def setting(self, guild_id: int, key: str, default=None):
+        menu = self.bot.get_cog("Menu")
+        return menu.get_value(guild_id, key, default) if menu else default
+
+    def configured_role_id(self, guild: discord.Guild, key: str):
+        value = self.setting(guild.id, key)
+        return int(value) if value is not None else None
+
+    def family_member_limit(self, guild_id: int) -> int:
+        value = self.setting(guild_id, "family_member_limit", 15)
+        return max(1, min(25, int(value)))
+
     def guild_id_for_role(self, role_id: int) -> int:
         for key, data in self.families.items():
             if data["role_id"] == role_id:
@@ -383,26 +388,36 @@ class Boost(commands.Cog):
         return 0
 
     def is_booster(self, member: discord.abc.User) -> bool:
-        return isinstance(member, discord.Member) and any(
-            role.id == BOOSTER_ROLE_ID for role in member.roles
+        if not isinstance(member, discord.Member):
+            return False
+        return self.has_role(
+            member, self.configured_role_id(member.guild, "booster_role")
         )
 
-    def has_role(self, member: discord.abc.User, role_id: int) -> bool:
-        return isinstance(member, discord.Member) and any(
+    def has_role(self, member: discord.abc.User, role_id: int | None) -> bool:
+        return role_id is not None and isinstance(member, discord.Member) and any(
             role.id == role_id for role in member.roles
         )
 
     def can_manage_family(self, member: discord.abc.User) -> bool:
-        return self.is_booster(member) or self.has_role(member, VIP_FULL_ROLE_ID)
+        if not isinstance(member, discord.Member):
+            return False
+        vip_role = self.configured_role_id(member.guild, "vip_full_role")
+        return self.is_booster(member) or self.has_role(member, vip_role)
 
     def can_manage_personal_role(self, member: discord.abc.User) -> bool:
-        return (
-            self.can_manage_family(member)
-            or self.has_role(member, VIP_PERSONAL_ROLE_ID)
-        )
+        if not isinstance(member, discord.Member):
+            return False
+        vip_role = self.configured_role_id(member.guild, "vip_personal_role")
+        return self.can_manage_family(member) or self.has_role(member, vip_role)
 
     def family_access_message(self, member: discord.abc.User) -> str:
-        if self.has_role(member, VIP_PERSONAL_ROLE_ID):
+        vip_role = (
+            self.configured_role_id(member.guild, "vip_personal_role")
+            if isinstance(member, discord.Member)
+            else None
+        )
+        if self.has_role(member, vip_role):
             return (
                 "<:wrong:1554659471223947324> Seu VIP atual permite apenas o cargo personalizado. "
                 "Gerenciar família requer upgrade para VIP maior ou boost."
@@ -460,10 +475,14 @@ class Boost(commands.Cog):
             print(f"Não foi possível atualizar o backup local do boost: {error}")
 
     async def repair_managed_roles(self, guild: discord.Guild) -> None:
-        trigger_role = guild.get_role(REPAIR_BELOW_ROLE_ID)
-        personal_lower_role = guild.get_role(ROLE_POSITION_LOWER_ID)
-        family_lower_role = guild.get_role(FAMILY_POSITION_LOWER_ID)
-        upper_role = guild.get_role(ROLE_POSITION_UPPER_ID)
+        trigger_role_id = self.configured_role_id(guild, "repair_below_role")
+        personal_lower_role_id = self.configured_role_id(guild, "role_position_lower")
+        family_lower_role_id = self.configured_role_id(guild, "family_position_lower")
+        upper_role_id = self.configured_role_id(guild, "role_position_upper")
+        trigger_role = guild.get_role(trigger_role_id) if trigger_role_id else None
+        personal_lower_role = guild.get_role(personal_lower_role_id) if personal_lower_role_id else None
+        family_lower_role = guild.get_role(family_lower_role_id) if family_lower_role_id else None
+        upper_role = guild.get_role(upper_role_id) if upper_role_id else None
         bot_member = guild.me
         if (
             trigger_role is None
@@ -507,10 +526,10 @@ class Boost(commands.Cog):
                 role
                 for role in guild.roles
                 if role.id not in {
-                    REPAIR_BELOW_ROLE_ID,
-                    ROLE_POSITION_LOWER_ID,
-                    FAMILY_POSITION_LOWER_ID,
-                    ROLE_POSITION_UPPER_ID,
+                    trigger_role_id,
+                    personal_lower_role_id,
+                    family_lower_role_id,
+                    upper_role_id,
                 }
                 and (
                     role.id in family_role_ids
@@ -536,9 +555,9 @@ class Boost(commands.Cog):
                 or role.name.casefold().startswith(("família -", "familia -"))
             )
             lower_role_id = (
-                FAMILY_POSITION_LOWER_ID
+                family_lower_role_id
                 if is_family_role
-                else ROLE_POSITION_LOWER_ID
+                else personal_lower_role_id
             )
             lower_role = guild.get_role(lower_role_id)
             if lower_role is None:
@@ -570,12 +589,13 @@ class Boost(commands.Cog):
         self, guild: discord.Guild, member: discord.Member, name_prefix: str
     ) -> discord.Role:
         lower_role_id = (
-            FAMILY_POSITION_LOWER_ID
+            self.configured_role_id(guild, "family_position_lower")
             if name_prefix.casefold() in {"família", "familia"}
-            else ROLE_POSITION_LOWER_ID
+            else self.configured_role_id(guild, "role_position_lower")
         )
         lower_role = guild.get_role(lower_role_id)
-        upper_role = guild.get_role(ROLE_POSITION_UPPER_ID)
+        upper_role_id = self.configured_role_id(guild, "role_position_upper")
+        upper_role = guild.get_role(upper_role_id) if upper_role_id else None
         bot_member = guild.me
         if lower_role is None or upper_role is None:
             raise ValueError("Não encontrei os cargos de referência configurados.")
@@ -885,7 +905,12 @@ class Boost(commands.Cog):
             if action in {"add", "remove"}:
                 select_view = discord.ui.View(timeout=180)
                 select_view.add_item(
-                    FamilyMemberSelect(self, owner_id, adding=(action == "add"))
+                    FamilyMemberSelect(
+                        self,
+                        owner_id,
+                        adding=(action == "add"),
+                        member_limit=self.family_member_limit(guild_id),
+                    )
                 )
                 prompt = (
                     "Selecione as pessoas para adicionar à família."
@@ -1011,12 +1036,13 @@ class Boost(commands.Cog):
         role = guild.get_role(state["role_id"])
         voice_channel = guild.get_channel(state.get("voice_channel_id"))
         member_count = len(role.members) if role else 0
+        member_limit = self.family_member_limit(guild.id)
         embed = discord.Embed(
             title="Gerenciar família",
             description=(
                 f"Cargo: {role.mention if role else 'não encontrado'}\n"
                 f"Call: {voice_channel.mention if voice_channel else 'ainda não criada'}\n"
-                f"Membros: {member_count}/{FAMILY_MEMBER_LIMIT}"
+                f"Membros: {member_count}/{member_limit}"
             ),
             color=role.color if role and role.color.value else discord.Color.blurple(),
         )

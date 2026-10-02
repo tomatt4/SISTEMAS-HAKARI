@@ -6,6 +6,7 @@ import traceback
 from pathlib import Path
 
 import discord
+from discord import app_commands
 from discord.ext import commands, tasks
 
 from keep_alive import keep_alive
@@ -18,8 +19,19 @@ from keep_alive import keep_alive
 TOKEN = os.getenv("TOKEN", "").strip()
 APPLICATION_ID_TEXT = os.getenv("APPLICATION_ID", "").strip()
 
-GUILD_ID = 1521927447438823656
 COMMAND_PREFIX = ","
+MODULE_UNCONFIGURED_MESSAGE = (
+    "módulo não configurado, configure em /menu ou chame o desenvolvedor "
+    "caso não tenha acesso"
+)
+
+
+class PrefixModuleNotConfigured(commands.CheckFailure):
+    pass
+
+
+class AppModuleNotConfigured(app_commands.CheckFailure):
+    pass
 
 BASE_DIR = Path(__file__).resolve().parent
 COGS_DIR = BASE_DIR / "cogs"
@@ -66,6 +78,32 @@ class HakariBot(commands.Bot):
             help_command=None,
             case_insensitive=True,
         )
+        self.add_check(self.check_prefix_module)
+        self.tree.add_check(self.check_app_module)
+        self.guild_commands_cleaned = False
+
+    def module_is_ready(self, guild_id: int, module: str) -> bool:
+        menu = self.get_cog("Menu")
+        return bool(menu and menu.module_configured(guild_id, module))
+
+    async def check_prefix_module(self, ctx: commands.Context) -> bool:
+        if ctx.guild is None or ctx.command is None or ctx.command.cog is None:
+            return True
+        module = type(ctx.command.cog).__module__.rsplit(".", 1)[-1]
+        if module == "menu" or self.module_is_ready(ctx.guild.id, module):
+            return True
+        raise PrefixModuleNotConfigured
+
+    async def check_app_module(self, interaction: discord.Interaction) -> bool:
+        if interaction.guild_id is None or interaction.command is None:
+            return True
+        binding = getattr(interaction.command, "binding", None)
+        if binding is None:
+            return True
+        module = type(binding).__module__.rsplit(".", 1)[-1]
+        if module == "menu" or self.module_is_ready(interaction.guild_id, module):
+            return True
+        raise AppModuleNotConfigured
 
     async def setup_hook(self) -> None:
         """
@@ -186,16 +224,12 @@ class HakariBot(commands.Bot):
         print("-" * 60, flush=True)
 
     async def sync_slash_commands(self) -> None:
-        guild = discord.Object(id=GUILD_ID)
-
         try:
-            self.tree.copy_global_to(guild=guild)
-
-            synced_commands = await self.tree.sync(guild=guild)
+            synced_commands = await self.tree.sync()
 
             print(
                 f"✅ {len(synced_commands)} slash commands "
-                f"sincronizados no servidor {GUILD_ID}.",
+                "sincronizados globalmente.",
                 flush=True,
             )
 
@@ -234,12 +268,48 @@ class HakariBot(commands.Bot):
 
             traceback.print_exc()
 
+    async def clear_guild_commands(self) -> None:
+        for guild in self.guilds:
+            guild_object = discord.Object(id=guild.id)
+            try:
+                self.tree.clear_commands(guild=guild_object)
+                await self.tree.sync(guild=guild_object)
+            except discord.HTTPException as error:
+                print(
+                    f"⚠️ Não foi possível limpar comandos locais em {guild.id}: {error}",
+                    flush=True,
+                )
+        self.guild_commands_cleaned = True
+
 
 # ============================================================
 # INSTÂNCIA DO BOT
 # ============================================================
 
 bot = HakariBot()
+
+
+@bot.tree.error
+async def on_app_command_error(
+    interaction: discord.Interaction,
+    error: app_commands.AppCommandError,
+) -> None:
+    if isinstance(error, AppModuleNotConfigured):
+        if interaction.response.is_done():
+            await interaction.followup.send(
+                MODULE_UNCONFIGURED_MESSAGE, ephemeral=True
+            )
+        else:
+            await interaction.response.send_message(
+                MODULE_UNCONFIGURED_MESSAGE, ephemeral=True
+            )
+        return
+
+    original_error = getattr(error, "original", error)
+    print(
+        f"Erro em comando slash: {type(original_error).__name__}: {original_error}",
+        flush=True,
+    )
 
 
 # ============================================================
@@ -302,6 +372,9 @@ async def on_ready() -> None:
     if bot.user is None:
         return
 
+    if not bot.guild_commands_cleaned:
+        await bot.clear_guild_commands()
+
     print("=" * 60, flush=True)
     print(
         f"✅ Logado como {bot.user} | ID: {bot.user.id}",
@@ -357,6 +430,10 @@ async def on_command_error(
     error: commands.CommandError,
 ) -> None:
     if isinstance(error, commands.CommandNotFound):
+        return
+
+    if isinstance(error, PrefixModuleNotConfigured):
+        await ctx.send(MODULE_UNCONFIGURED_MESSAGE)
         return
 
     if isinstance(error, commands.MissingPermissions):

@@ -7,20 +7,7 @@ import time
 
 cooldowns = {}
 
-bloquear_tomates = False
-bot_owner_id_cache = None
-
-
-TARGET_PICK_ROLES = {
-    1553817043076259911
-}
-
-REDUCED_COOLDOWN_ROLES = {
-    *TARGET_PICK_ROLES
-}
-
-DEFAULT_COOLDOWN = 7
-REDUCED_COOLDOWN = 5
+BOT_DEVELOPER_ID = 1543385262984396852
 
 
 def has_role(member: discord.Member, roles: set[int]):
@@ -31,45 +18,39 @@ def is_owner(member: discord.Member):
     return member.id == member.guild.owner_id
 
 
-def can_pick_target(member: discord.Member):
-    return has_role(member, TARGET_PICK_ROLES)
-
-
-def get_cooldown(member: discord.Member):
-    if has_role(member, REDUCED_COOLDOWN_ROLES):
-        return REDUCED_COOLDOWN
-
-    return DEFAULT_COOLDOWN
-
-
 async def is_bot_owner(bot: commands.Bot, user_id: int):
-    global bot_owner_id_cache
-
-    if bot_owner_id_cache is None:
-        app = await bot.application_info()
-        bot_owner_id_cache = 1543385262984396852
-
-    return user_id == bot_owner_id_cache
+    return user_id == BOT_DEVELOPER_ID
 
 
 async def tomate_core(
     channel,
     author: discord.Member,
     send,
-    target_user: discord.Member | None = None
+    target_user: discord.Member | None = None,
+    settings: dict | None = None,
 ):
+    settings = settings or {}
+    target_pick_roles = set(settings.get("target_pick_roles", []))
+    reduced_cooldown_roles = set(settings.get("reduced_cooldown_roles", []))
+    default_cooldown = int(settings.get("default_cooldown", 7))
+    reduced_cooldown = int(settings.get("reduced_cooldown", 5))
 
     # Só quem tem o cargo pode escolher um alvo específico
-    if target_user is not None and not can_pick_target(author):
+    if target_user is not None and not has_role(author, target_pick_roles):
         await send(
             "tu precisa do cargo de boosters pra escolher um alvo 😭"
         )
         return
 
-    cooldown_time = get_cooldown(author)
+    cooldown_time = (
+        reduced_cooldown
+        if has_role(author, reduced_cooldown_roles)
+        else default_cooldown
+    )
 
     if cooldown_time > 0:
-        last_used = cooldowns.get(author.id)
+        cooldown_key = (author.guild.id, author.id)
+        last_used = cooldowns.get(cooldown_key)
 
         if last_used:
             remaining = cooldown_time - (time.time() - last_used)
@@ -84,7 +65,7 @@ async def tomate_core(
                 )
                 return
 
-        cooldowns[author.id] = time.time()
+        cooldowns[cooldown_key] = time.time()
 
     # Alvo específico
     if target_user is not None:
@@ -213,6 +194,10 @@ class Tomate(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
+    def settings_for(self, guild_id: int) -> dict:
+        menu = self.bot.get_cog("Menu")
+        return menu.config.get(str(guild_id), {}).get("settings", {}) if menu else {}
+
     @commands.Cog.listener()
     async def on_raw_reaction_add(
         self,
@@ -246,8 +231,13 @@ class Tomate(commands.Cog):
 
         guild = self.bot.get_guild(payload.guild_id)
 
-        # Bloqueia tomates no dono do servidor e dono do bot
-        if bloquear_tomates and guild is not None:
+        menu = self.bot.get_cog("Menu")
+        block_tomatoes = (
+            menu.get_value(guild.id, "block_owner_tomatoes", False)
+            if menu and guild
+            else False
+        )
+        if block_tomatoes and guild is not None:
 
             bot_owner = await is_bot_owner(
                 self.bot,
@@ -306,6 +296,7 @@ class Tomate(commands.Cog):
         name="tomate",
         description="Lança um tomate em uma mensagem aleatória ou em alguém específico"
     )
+    @app_commands.guild_only()
     @app_commands.describe(
         alvo="Usuário que você quer tacar tomate"
     )
@@ -327,7 +318,8 @@ class Tomate(commands.Cog):
             interaction.channel,
             interaction.user,
             send,
-            alvo
+            alvo,
+            self.settings_for(interaction.guild_id),
         )
 
     @app_commands.command(
@@ -338,8 +330,6 @@ class Tomate(commands.Cog):
         self,
         interaction: discord.Interaction
     ):
-
-        global bloquear_tomates
 
         guild = interaction.guild
 
@@ -366,7 +356,15 @@ class Tomate(commands.Cog):
             )
             return
 
-        bloquear_tomates = not bloquear_tomates
+        menu = self.bot.get_cog("Menu")
+        if menu is None:
+            return await interaction.response.send_message(
+                "O painel de configurações não está disponível.", ephemeral=True
+            )
+        bloquear_tomates = not menu.get_value(
+            guild.id, "block_owner_tomatoes", False
+        )
+        await menu.set_value(guild.id, "block_owner_tomatoes", bloquear_tomates)
 
         status = (
             "ativado"
