@@ -283,8 +283,12 @@ class RoleSettingSelect(discord.ui.RoleSelect):
 
 class ChannelSettingSelect(discord.ui.ChannelSelect):
     def __init__(self, view: "MenuView"):
+        placeholder = {
+            "welcome": "Selecione o canal de boas-vindas",
+            "insta": "Selecione o canal do Instagram fictício",
+        }.get(view.category, "Selecione o canal deste módulo")
         super().__init__(
-            placeholder="Selecione o canal de boas-vindas",
+            placeholder=placeholder,
             min_values=0,
             max_values=1,
             channel_types=[discord.ChannelType.text],

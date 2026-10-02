@@ -81,9 +81,10 @@ class LikeButton(discord.ui.Button):
                 "O Instagram está indisponível porque o banco de dados não conectou.",
                 ephemeral=True,
             )
+        await interaction.response.defer()
         post = await self.cog.get_post(self.post_id)
         if post is None or post["guild_id"] != interaction.guild_id:
-            return await interaction.response.send_message(
+            return await interaction.followup.send(
                 "Esta publicação não está disponível neste servidor.",
                 ephemeral=True,
             )
@@ -115,9 +116,9 @@ class LikeButton(discord.ui.Button):
             post["image_filename"],
             count,
         )
-        await interaction.response.edit_message(
+        await interaction.message.edit(
             embed=embed,
-            view=InstaPostView(self.cog, self.post_id, count)
+            view=InstaPostView(self.cog, self.post_id),
         )
         await interaction.followup.send(message, ephemeral=True)
 
