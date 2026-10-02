@@ -20,18 +20,6 @@ TOKEN = os.getenv("TOKEN", "").strip()
 APPLICATION_ID_TEXT = os.getenv("APPLICATION_ID", "").strip()
 
 COMMAND_PREFIX = ","
-MODULE_UNCONFIGURED_MESSAGE = (
-    "módulo não configurado, configure em /menu ou chame o desenvolvedor "
-    "caso não tenha acesso"
-)
-
-
-class PrefixModuleNotConfigured(commands.CheckFailure):
-    pass
-
-
-class AppModuleNotConfigured(app_commands.CheckFailure):
-    pass
 
 BASE_DIR = Path(__file__).resolve().parent
 COGS_DIR = BASE_DIR / "cogs"
@@ -69,11 +57,6 @@ intents = discord.Intents.all()
 # CLASSE PRINCIPAL DO BOT
 # ============================================================
 
-class HakariCommandTree(app_commands.CommandTree):
-    async def interaction_check(self, interaction: discord.Interaction) -> bool:
-        return await interaction.client.check_app_module(interaction)
-
-
 class HakariBot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(
@@ -82,33 +65,8 @@ class HakariBot(commands.Bot):
             application_id=APPLICATION_ID,
             help_command=None,
             case_insensitive=True,
-            tree_cls=HakariCommandTree,
         )
-        self.add_check(self.check_prefix_module)
         self.guild_commands_synced = False
-
-    def module_is_ready(self, guild_id: int, module: str) -> bool:
-        menu = self.get_cog("Menu")
-        return bool(menu and menu.module_configured(guild_id, module))
-
-    async def check_prefix_module(self, ctx: commands.Context) -> bool:
-        if ctx.guild is None or ctx.command is None or ctx.command.cog is None:
-            return True
-        module = type(ctx.command.cog).__module__.rsplit(".", 1)[-1]
-        if module == "menu" or self.module_is_ready(ctx.guild.id, module):
-            return True
-        raise PrefixModuleNotConfigured
-
-    async def check_app_module(self, interaction: discord.Interaction) -> bool:
-        if interaction.guild_id is None or interaction.command is None:
-            return True
-        binding = getattr(interaction.command, "binding", None)
-        if binding is None:
-            return True
-        module = type(binding).__module__.rsplit(".", 1)[-1]
-        if module == "menu" or self.module_is_ready(interaction.guild_id, module):
-            return True
-        raise AppModuleNotConfigured
 
     async def setup_hook(self) -> None:
         """
@@ -315,17 +273,6 @@ async def on_app_command_error(
     interaction: discord.Interaction,
     error: app_commands.AppCommandError,
 ) -> None:
-    if isinstance(error, AppModuleNotConfigured):
-        if interaction.response.is_done():
-            await interaction.followup.send(
-                MODULE_UNCONFIGURED_MESSAGE, ephemeral=True
-            )
-        else:
-            await interaction.response.send_message(
-                MODULE_UNCONFIGURED_MESSAGE, ephemeral=True
-            )
-        return
-
     original_error = getattr(error, "original", error)
     print(
         f"Erro em comando slash: {type(original_error).__name__}: {original_error}",
@@ -471,10 +418,6 @@ async def on_command_error(
     error: commands.CommandError,
 ) -> None:
     if isinstance(error, commands.CommandNotFound):
-        return
-
-    if isinstance(error, PrefixModuleNotConfigured):
-        await ctx.send(MODULE_UNCONFIGURED_MESSAGE)
         return
 
     if isinstance(error, commands.MissingPermissions):
