@@ -19,7 +19,7 @@ from keep_alive import keep_alive
 TOKEN = os.getenv("TOKEN", "").strip()
 APPLICATION_ID_TEXT = os.getenv("APPLICATION_ID", "").strip()
 
-COMMAND_PREFIX = ","
+COMMAND_PREFIX = "m!"
 
 BASE_DIR = Path(__file__).resolve().parent
 COGS_DIR = BASE_DIR / "cogs"
@@ -288,11 +288,12 @@ async def trocar_status() -> None:
     try:
         # A lista fica aqui dentro para calcular a latência atual a cada 40s
         status_atualizados = [
-            "six seven ne",
-            "HAKARI V2.11.0",
+            "oi",
+            "Miun V1.0.0",
             "feito pelo asta",
-            f"latencia: {round(bot.latency * 1000)}ms",
-            "cidadão 😭🙏💔"
+            f"latência: {round(bot.latency * 1000)}ms",
+            "six seven",
+            "ser um bot é legal sabia"
         ]
 
         await bot.change_presence(

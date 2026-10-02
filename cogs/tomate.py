@@ -128,7 +128,7 @@ async def tomate_core(
 
         await send(
             f"(**CHANCE: 10%**): "
-            f"{target.mention} pegou o tomatet no ar e jogou de volta "
+            f"{target.mention} pegou o tomate no ar e jogou de volta "
             f"em {author.mention}!"
         )
         return

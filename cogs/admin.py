@@ -1,7 +1,9 @@
 import datetime
 import json
+import os
 from typing import Optional
 
+import asyncpg
 import discord
 from discord.ext import commands
 from discord import app_commands
@@ -196,10 +198,9 @@ class Admin(commands.Cog):
         if upper_role.position <= lower_role.position:
             return await ctx.send("Os cargos de referência estão em ordem inválida.")
 
-        menu = self.bot.get_cog("Menu")
-        pool = getattr(menu, "pool", None)
-        if pool is None:
-            return await ctx.send("A conexão com o banco DATABASE não está disponível.")
+        database_url = os.getenv("DATABASE") or os.getenv("DATABASE_URL")
+        if not database_url:
+            return await ctx.send("A variável DATABASE não está definida no ambiente do bot.")
 
         roles = [
             role
@@ -209,17 +210,6 @@ class Admin(commands.Cog):
         if not roles:
             return await ctx.send("Não há cargos entre os dois cargos de referência.")
 
-        await pool.execute(
-            """
-            CREATE TABLE IF NOT EXISTS temporary_role_backups (
-                guild_id BIGINT NOT NULL,
-                role_id BIGINT NOT NULL,
-                role_data JSONB NOT NULL,
-                captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                PRIMARY KEY (guild_id, role_id)
-            )
-            """
-        )
         records = [
             (
                 ctx.guild.id,
@@ -238,16 +228,41 @@ class Admin(commands.Cog):
             )
             for role in roles
         ]
-        await pool.executemany(
-            """
-            INSERT INTO temporary_role_backups (guild_id, role_id, role_data)
-            VALUES ($1, $2, $3::jsonb)
-            ON CONFLICT (guild_id, role_id) DO UPDATE SET
-                role_data = EXCLUDED.role_data,
-                captured_at = NOW()
-            """,
-            records,
-        )
+        try:
+            async with asyncpg.create_pool(
+                dsn=database_url,
+                ssl="require",
+                min_size=1,
+                max_size=2,
+                command_timeout=20,
+            ) as pool:
+                await pool.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS temporary_role_backups (
+                        guild_id BIGINT NOT NULL,
+                        role_id BIGINT NOT NULL,
+                        role_data JSONB NOT NULL,
+                        captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                        PRIMARY KEY (guild_id, role_id)
+                    )
+                    """
+                )
+                await pool.executemany(
+                    """
+                    INSERT INTO temporary_role_backups (guild_id, role_id, role_data)
+                    VALUES ($1, $2, $3::jsonb)
+                    ON CONFLICT (guild_id, role_id) DO UPDATE SET
+                        role_data = EXCLUDED.role_data,
+                        captured_at = NOW()
+                    """,
+                    records,
+                )
+        except Exception as error:
+            print(
+                f"Falha ao salvar cargos no DATABASE: {type(error).__name__}: {error}",
+                flush=True,
+            )
+            return await ctx.send("Não consegui conectar ou salvar no banco. Consulte os logs do bot.")
         await ctx.send(f"Salvei {len(roles)} cargo(s) no DATABASE.")
 
 
