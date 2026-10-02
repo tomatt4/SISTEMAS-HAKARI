@@ -69,6 +69,11 @@ intents = discord.Intents.all()
 # CLASSE PRINCIPAL DO BOT
 # ============================================================
 
+class HakariCommandTree(app_commands.CommandTree):
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        return await interaction.client.check_app_module(interaction)
+
+
 class HakariBot(commands.Bot):
     def __init__(self) -> None:
         super().__init__(
@@ -77,9 +82,9 @@ class HakariBot(commands.Bot):
             application_id=APPLICATION_ID,
             help_command=None,
             case_insensitive=True,
+            tree_cls=HakariCommandTree,
         )
         self.add_check(self.check_prefix_module)
-        self.tree.add_check(self.check_app_module)
         self.guild_commands_cleaned = False
 
     def module_is_ready(self, guild_id: int, module: str) -> bool:
