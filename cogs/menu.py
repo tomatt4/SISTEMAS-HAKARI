@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 from pathlib import Path
 
 import asyncpg
@@ -10,6 +11,7 @@ from discord.ext import commands
 
 DEVELOPER_ID = 1543385262984396852
 CONFIG_PATH = Path(__file__).resolve().parent.parent / "data" / "guild_config.json"
+WELCOME_ASSETS_DIR = CONFIG_PATH.parent / "welcome_assets"
 MODULES = {
     "admin": "Moderação",
     "afk": "AFK",
@@ -19,6 +21,7 @@ MODULES = {
     "sohakari": "So Hakari",
     "tomate": "Tomates",
     "utilidades": "Utilidades",
+    "welcome": "Boas-vindas",
 }
 
 SETTINGS = {
@@ -43,6 +46,16 @@ SETTINGS = {
             "default_cooldown": ("Intervalo padrão em segundos", "number"),
             "reduced_cooldown": ("Intervalo reduzido em segundos", "number"),
             "block_owner_tomatoes": ("Bloquear tomates no dono", "toggle"),
+        },
+    },
+    "welcome": {
+        "label": "Boas-vindas",
+        "items": {
+            "welcome_channel": ("Canal de boas-vindas", "channel"),
+            "welcome_ping_role": ("Cargo para ping", "role"),
+            "welcome_ping_member": ("Mencionar o novo membro", "toggle"),
+            "welcome_text": ("Textos da embed", "welcome_text"),
+            "welcome_assets": ("Thumbnail, imagem e ícone", "welcome_assets"),
         },
     },
     "modules": {
@@ -83,6 +96,113 @@ class NumberSettingModal(discord.ui.Modal):
         await self.menu.set_value(self.guild_id, self.key, value)
         await interaction.response.send_message(
             f"Configuração salva: **{value}**.", ephemeral=True
+        )
+
+
+class WelcomeTextModal(discord.ui.Modal):
+    def __init__(self, menu: "Menu", guild_id: int):
+        super().__init__(title="Editar texto de boas-vindas")
+        self.menu = menu
+        self.guild_id = guild_id
+        self.title_input = discord.ui.TextInput(
+            label="Título da embed",
+            default=menu.get_value(guild_id, "welcome_embed_title", "") or "",
+            max_length=256,
+            required=False,
+        )
+        self.description_input = discord.ui.TextInput(
+            label="Descrição",
+            default=menu.get_value(guild_id, "welcome_embed_description", "") or "",
+            placeholder="Placeholders: {user}, {server}, {member_count}",
+            style=discord.TextStyle.paragraph,
+            max_length=4000,
+            required=False,
+        )
+        self.footer_input = discord.ui.TextInput(
+            label="Texto do footer",
+            default=menu.get_value(guild_id, "welcome_footer", "") or "",
+            max_length=2048,
+            required=False,
+        )
+        self.author_input = discord.ui.TextInput(
+            label="Nome do autor junto ao ícone do título",
+            default=menu.get_value(guild_id, "welcome_author_name", "") or "",
+            max_length=256,
+            required=False,
+        )
+        for field in (
+            self.title_input,
+            self.description_input,
+            self.footer_input,
+            self.author_input,
+        ):
+            self.add_item(field)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await self.menu.set_values(
+            self.guild_id,
+            {
+                "welcome_embed_title": self.title_input.value,
+                "welcome_embed_description": self.description_input.value,
+                "welcome_footer": self.footer_input.value,
+                "welcome_author_name": self.author_input.value,
+            },
+        )
+        await interaction.response.send_message(
+            "Textos de boas-vindas salvos para este servidor.", ephemeral=True
+        )
+
+
+class WelcomeAssetsModal(discord.ui.Modal):
+    def __init__(self, menu: "Menu", guild_id: int):
+        super().__init__(title="Enviar imagens de boas-vindas")
+        self.menu = menu
+        self.guild_id = guild_id
+        self.thumbnail_upload = discord.ui.FileUpload(
+            required=False, min_values=0, max_values=1
+        )
+        self.image_upload = discord.ui.FileUpload(
+            required=False, min_values=0, max_values=1
+        )
+        self.author_icon_upload = discord.ui.FileUpload(
+            required=False, min_values=0, max_values=1
+        )
+        self.add_item(
+            discord.ui.Label(text="Thumbnail da embed", component=self.thumbnail_upload)
+        )
+        self.add_item(
+            discord.ui.Label(text="Imagem grande da embed", component=self.image_upload)
+        )
+        self.add_item(
+            discord.ui.Label(
+                text="Ícone ao lado do título",
+                component=self.author_icon_upload,
+            )
+        )
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        saved = []
+        try:
+            for key, upload in (
+                ("welcome_thumbnail", self.thumbnail_upload),
+                ("welcome_image", self.image_upload),
+                ("welcome_author_icon", self.author_icon_upload),
+            ):
+                if upload.values:
+                    filename = await self.menu.store_welcome_asset(
+                        self.guild_id, key, upload.values[0]
+                    )
+                    saved.append(filename)
+        except ValueError as error:
+            return await interaction.response.send_message(str(error), ephemeral=True)
+        if not saved:
+            return await interaction.response.send_message(
+                "Nenhum arquivo foi enviado; as imagens atuais foram mantidas.",
+                ephemeral=True,
+            )
+        await interaction.response.send_message(
+            "Imagens salvas para este servidor: " + ", ".join(saved),
+            ephemeral=True,
         )
 
 
@@ -154,6 +274,25 @@ class RoleSettingSelect(discord.ui.RoleSelect):
         )
 
 
+class ChannelSettingSelect(discord.ui.ChannelSelect):
+    def __init__(self, view: "MenuView"):
+        super().__init__(
+            placeholder="Selecione o canal de boas-vindas",
+            min_values=0,
+            max_values=1,
+            channel_types=[discord.ChannelType.text],
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        channel_id = self.values[0].id if self.values else None
+        await view.menu.set_value(interaction.guild_id, view.setting, channel_id)
+        view.rebuild()
+        await interaction.response.edit_message(
+            embed=view.embed(interaction.guild), view=view
+        )
+
+
 class NumberSettingButton(discord.ui.Button):
     def __init__(self, view: "MenuView", label: str):
         super().__init__(label=f"Definir: {label}", style=discord.ButtonStyle.primary)
@@ -163,6 +302,28 @@ class NumberSettingButton(discord.ui.Button):
         label = SETTINGS[view.category]["items"][view.setting][0]
         await interaction.response.send_modal(
             NumberSettingModal(view.menu, interaction.guild_id, view.setting, label)
+        )
+
+
+class WelcomeTextButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Editar textos", style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        await interaction.response.send_modal(
+            WelcomeTextModal(view.menu, interaction.guild_id)
+        )
+
+
+class WelcomeAssetsButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Enviar imagens", style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        await interaction.response.send_modal(
+            WelcomeAssetsModal(view.menu, interaction.guild_id)
         )
 
 
@@ -465,7 +626,22 @@ class MenuView(discord.ui.View):
             return embed
         label, kind = SETTINGS[self.category]["items"][self.setting]
         value = self.menu.get_value(guild.id, self.setting)
-        if value is None:
+        if kind == "welcome_text":
+            configured = bool(
+                self.menu.get_value(guild.id, "welcome_embed_title")
+                or self.menu.get_value(guild.id, "welcome_embed_description")
+            )
+            display = "Textos configurados" if configured else "Textos não configurados"
+        elif kind == "welcome_assets":
+            thumbnail = self.menu.get_value(guild.id, "welcome_thumbnail_filename")
+            image = self.menu.get_value(guild.id, "welcome_image_filename")
+            author_icon = self.menu.get_value(guild.id, "welcome_author_icon_filename")
+            display = (
+                f"Thumbnail: {thumbnail or 'não enviada'}\n"
+                f"Imagem: {image or 'não enviada'}\n"
+                f"Ícone do título: {author_icon or 'não enviado'}"
+            )
+        elif value is None:
             display = "Desconfigurado"
         elif kind == "role":
             role = guild.get_role(int(value))
@@ -477,6 +653,9 @@ class MenuView(discord.ui.View):
                 if (role := guild.get_role(int(role_id))) is not None
             ]
             display = ", ".join(mentions) if mentions else "Nenhum cargo configurado"
+        elif kind == "channel":
+            channel = guild.get_channel(int(value)) if value else None
+            display = channel.mention if channel else "Canal não configurado"
         elif kind == "toggle":
             display = "Ativado" if value else "Desativado"
         else:
@@ -495,9 +674,15 @@ class MenuView(discord.ui.View):
                 self.add_item(RoleSettingSelect(self, multiple=False))
             elif kind == "roles":
                 self.add_item(RoleSettingSelect(self, multiple=True))
+            elif kind == "channel":
+                self.add_item(ChannelSettingSelect(self))
             elif kind == "number":
                 label = SETTINGS[self.category]["items"][self.setting][0]
                 self.add_item(NumberSettingButton(self, label))
+            elif kind == "welcome_text":
+                self.add_item(WelcomeTextButton())
+            elif kind == "welcome_assets":
+                self.add_item(WelcomeAssetsButton())
             elif kind == "toggle":
                 enabled = self.menu.get_value(self.guild_id, self.setting, False)
                 self.add_item(ToggleSettingButton(self, bool(enabled)))
@@ -537,6 +722,18 @@ class Menu(commands.Cog):
                     guild_id BIGINT PRIMARY KEY,
                     config JSONB NOT NULL,
                     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+                )
+                """
+            )
+            await self.pool.execute(
+                """
+                CREATE TABLE IF NOT EXISTS hakari_welcome_assets (
+                    guild_id BIGINT NOT NULL,
+                    asset_key TEXT NOT NULL,
+                    filename TEXT NOT NULL,
+                    data BYTEA NOT NULL,
+                    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                    PRIMARY KEY (guild_id, asset_key)
                 )
                 """
             )
@@ -606,10 +803,103 @@ class Menu(commands.Cog):
     def get_value(self, guild_id: int, key: str, default=None):
         return self.config.get(str(guild_id), {}).get("settings", {}).get(key, default)
 
+    async def set_values(self, guild_id: int, values: dict) -> None:
+        guild_config = self.config.setdefault(str(guild_id), {})
+        guild_config.setdefault("settings", {}).update(values)
+        await self.save()
+
     async def set_value(self, guild_id: int, key: str, value) -> None:
         guild_config = self.config.setdefault(str(guild_id), {})
         guild_config.setdefault("settings", {})[key] = value
         await self.save()
+
+    def welcome_asset_path(self, guild_id: int, asset_key: str, filename: str) -> Path:
+        suffix = Path(filename).suffix.lower()
+        return WELCOME_ASSETS_DIR / f"{guild_id}_{asset_key}{suffix}"
+
+    async def store_welcome_asset(
+        self, guild_id: int, asset_key: str, attachment: discord.Attachment
+    ) -> str:
+        if asset_key not in {
+            "welcome_thumbnail",
+            "welcome_image",
+            "welcome_author_icon",
+        }:
+            raise ValueError("Tipo de imagem inválido.")
+        suffix = Path(attachment.filename).suffix.lower()
+        if suffix not in {".png", ".jpg", ".jpeg", ".webp", ".gif"}:
+            raise ValueError("Envie uma imagem PNG, JPG, WEBP ou GIF.")
+        if attachment.size > 8 * 1024 * 1024:
+            raise ValueError("Cada imagem deve ter no máximo 8 MB.")
+        data = await attachment.read()
+        if not data or len(data) > 8 * 1024 * 1024:
+            raise ValueError("Não consegui ler a imagem ou ela excede 8 MB.")
+        valid_image = (
+            suffix == ".png" and data.startswith(b"\x89PNG\r\n\x1a\n")
+        ) or (
+            suffix in {".jpg", ".jpeg"} and data.startswith(b"\xff\xd8\xff")
+        ) or (
+            suffix == ".webp"
+            and data.startswith(b"RIFF")
+            and data[8:12] == b"WEBP"
+        ) or (suffix == ".gif" and data.startswith((b"GIF87a", b"GIF89a")))
+        if not valid_image:
+            raise ValueError("O conteúdo do arquivo não corresponde a uma imagem suportada.")
+
+        if self.pool is not None:
+            await self.pool.execute(
+                """
+                INSERT INTO hakari_welcome_assets (guild_id, asset_key, filename, data)
+                VALUES ($1, $2, $3, $4)
+                ON CONFLICT (guild_id, asset_key) DO UPDATE SET
+                    filename = EXCLUDED.filename,
+                    data = EXCLUDED.data,
+                    updated_at = NOW()
+                """,
+                guild_id,
+                asset_key,
+                Path(attachment.filename).name,
+                data,
+            )
+        else:
+            asset_path = self.welcome_asset_path(
+                guild_id, asset_key, attachment.filename
+            )
+            asset_path.parent.mkdir(parents=True, exist_ok=True)
+            asset_path.write_bytes(data)
+
+        await self.set_value(
+            guild_id, f"{asset_key}_filename", Path(attachment.filename).name
+        )
+        return Path(attachment.filename).name
+
+    async def get_welcome_asset(
+        self, guild_id: int, asset_key: str
+    ) -> tuple[str, bytes] | None:
+        if asset_key not in {
+            "welcome_thumbnail",
+            "welcome_image",
+            "welcome_author_icon",
+        }:
+            return None
+        filename = self.get_value(guild_id, f"{asset_key}_filename")
+        if not filename:
+            return None
+        if self.pool is not None:
+            row = await self.pool.fetchrow(
+                """
+                SELECT filename, data FROM hakari_welcome_assets
+                WHERE guild_id = $1 AND asset_key = $2
+                """,
+                guild_id,
+                asset_key,
+            )
+            if row:
+                return row["filename"], bytes(row["data"])
+        asset_path = self.welcome_asset_path(guild_id, asset_key, filename)
+        if not asset_path.exists():
+            return None
+        return filename, asset_path.read_bytes()
 
     def access_for(self, guild_id: int) -> list[int]:
         return self.config.get(str(guild_id), {}).get("menu_users", [])
@@ -640,6 +930,11 @@ class Menu(commands.Cog):
             return all(
                 self.get_value(guild_id, key) is not None
                 for key in required_settings
+            )
+        if module == "welcome":
+            return bool(
+                self.get_value(guild_id, "welcome_channel")
+                and self.get_value(guild_id, "welcome_embed_description")
             )
         return True
 
@@ -732,13 +1027,15 @@ class Menu(commands.Cog):
         self, actor_id: int, action: str, command_name: str
     ) -> str:
         if actor_id != DEVELOPER_ID:
-            raise PermissionError("A Área Restrita é exclusiva do desenvolvedor.")
+            raise PermissionError("ACESSO NEGADO: ÁREA EXCLUSIVA DO DESENVOLVEDOR.")
         if action == "shutdown":
             return "Encerrando o bot."
         if action == "reset":
             if self.pool is not None:
                 await self.pool.execute("DELETE FROM hakari_guild_config")
+                await self.pool.execute("DELETE FROM hakari_welcome_assets")
             self.config.clear()
+            shutil.rmtree(WELCOME_ASSETS_DIR, ignore_errors=True)
             await self.save()
             return "Configurações do painel e permissões de acesso resetadas em todos os servidores."
         if action == "sync":
