@@ -191,8 +191,8 @@ class Admin(commands.Cog):
         if ctx.author.id not in {ctx.guild.owner_id, DEVELOPER_ID}:
             return await ctx.send("Somente o dono do servidor ou o desenvolvedor do bot pode usar este comando.")
 
-        upper_role = ctx.guild.get_role(1540035024508948630)
-        lower_role = ctx.guild.get_role(1542635427293302936)
+        upper_role = ctx.guild.get_role(1540034106270679110)
+        lower_role = ctx.guild.get_role(1541324825380003930)
         if upper_role is None or lower_role is None:
             return await ctx.send("Não encontrei um ou ambos os cargos de referência neste servidor.")
         if upper_role.position <= lower_role.position:

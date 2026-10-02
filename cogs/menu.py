@@ -367,9 +367,9 @@ class AccessButton(discord.ui.Button):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         view: MenuView = self.view
-        if interaction.user.id != DEVELOPER_ID:
+        if not view.menu.can_manage_access(interaction.user.id, interaction.guild):
             return await interaction.response.send_message(
-                "Somente o desenvolvedor pode conceder ou remover acessos.",
+                "Somente o dono do servidor ou o desenvolvedor pode gerenciar acessos.",
                 ephemeral=True,
             )
         await interaction.response.edit_message(
@@ -597,9 +597,9 @@ class AccessUserSelect(discord.ui.UserSelect):
 
     async def callback(self, interaction: discord.Interaction) -> None:
         view: AccessView = self.view
-        if interaction.user.id != DEVELOPER_ID:
+        if not view.menu.can_manage_access(interaction.user.id, interaction.guild):
             return await interaction.response.send_message(
-                "Somente o desenvolvedor pode conceder ou remover acessos.",
+                "Somente o dono do servidor ou o desenvolvedor pode gerenciar acessos.",
                 ephemeral=True,
             )
         mode = view.mode_select.values[0] if view.mode_select.values else None
@@ -929,7 +929,19 @@ class Menu(commands.Cog):
         await self.save()
 
     def can_access(self, user_id: int, guild_id: int) -> bool:
-        return user_id == DEVELOPER_ID or user_id in self.access_for(guild_id)
+        guild = self.bot.get_guild(guild_id)
+        return (
+            user_id == DEVELOPER_ID
+            or (guild is not None and guild.owner_id == user_id)
+            or user_id in self.access_for(guild_id)
+        )
+
+    def can_manage_access(
+        self, user_id: int, guild: discord.Guild | None
+    ) -> bool:
+        return user_id == DEVELOPER_ID or (
+            guild is not None and guild.owner_id == user_id
+        )
 
     def module_configured(self, guild_id: int, module: str) -> bool:
         if module not in MODULES or not self.get_value(
