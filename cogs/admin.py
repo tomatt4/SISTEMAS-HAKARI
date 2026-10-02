@@ -1,9 +1,12 @@
 import datetime
+import json
 from typing import Optional
 
 import discord
 from discord.ext import commands
 from discord import app_commands
+
+from .menu import DEVELOPER_ID
 
 class Admin(commands.Cog):
     def __init__(self, bot):
@@ -178,6 +181,75 @@ class Admin(commands.Cog):
             return await interaction.response.send_message(f"mão foi possível banir: {exc}", ephemeral=True)
 
         await interaction.response.send_message(f"{member.mention} foi banido, motivo: {reason}")
+
+    @commands.command(name="salvarcargos")
+    async def save_roles_temporarily(self, ctx: commands.Context) -> None:
+        if ctx.guild is None:
+            return await ctx.send("Este comando só pode ser usado em um servidor.")
+        if ctx.author.id not in {ctx.guild.owner_id, DEVELOPER_ID}:
+            return await ctx.send("Somente o dono do servidor ou o desenvolvedor do bot pode usar este comando.")
+
+        upper_role = ctx.guild.get_role(1540035024508948630)
+        lower_role = ctx.guild.get_role(1542635427293302936)
+        if upper_role is None or lower_role is None:
+            return await ctx.send("Não encontrei um ou ambos os cargos de referência neste servidor.")
+        if upper_role.position <= lower_role.position:
+            return await ctx.send("Os cargos de referência estão em ordem inválida.")
+
+        menu = self.bot.get_cog("Menu")
+        pool = getattr(menu, "pool", None)
+        if pool is None:
+            return await ctx.send("A conexão com o banco DATABASE não está disponível.")
+
+        roles = [
+            role
+            for role in ctx.guild.roles
+            if lower_role.position < role.position < upper_role.position
+        ]
+        if not roles:
+            return await ctx.send("Não há cargos entre os dois cargos de referência.")
+
+        await pool.execute(
+            """
+            CREATE TABLE IF NOT EXISTS temporary_role_backups (
+                guild_id BIGINT NOT NULL,
+                role_id BIGINT NOT NULL,
+                role_data JSONB NOT NULL,
+                captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+                PRIMARY KEY (guild_id, role_id)
+            )
+            """
+        )
+        records = [
+            (
+                ctx.guild.id,
+                role.id,
+                json.dumps(
+                    {
+                        "name": role.name,
+                        "position": role.position,
+                        "permissions": role.permissions.value,
+                        "color": role.color.value,
+                        "hoist": role.hoist,
+                        "mentionable": role.mentionable,
+                        "managed": role.managed,
+                    }
+                ),
+            )
+            for role in roles
+        ]
+        await pool.executemany(
+            """
+            INSERT INTO temporary_role_backups (guild_id, role_id, role_data)
+            VALUES ($1, $2, $3::jsonb)
+            ON CONFLICT (guild_id, role_id) DO UPDATE SET
+                role_data = EXCLUDED.role_data,
+                captured_at = NOW()
+            """,
+            records,
+        )
+        await ctx.send(f"Salvei {len(roles)} cargo(s) no DATABASE.")
+
 
 async def setup(bot):
     await bot.add_cog(Admin(bot))
