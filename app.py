@@ -85,7 +85,7 @@ class HakariBot(commands.Bot):
             tree_cls=HakariCommandTree,
         )
         self.add_check(self.check_prefix_module)
-        self.guild_commands_cleaned = False
+        self.guild_commands_synced = False
 
     def module_is_ready(self, guild_id: int, module: str) -> bool:
         menu = self.get_cog("Menu")
@@ -273,18 +273,34 @@ class HakariBot(commands.Bot):
 
             traceback.print_exc()
 
-    async def clear_guild_commands(self) -> None:
-        for guild in self.guilds:
-            guild_object = discord.Object(id=guild.id)
-            try:
-                self.tree.clear_commands(guild=guild_object)
-                await self.tree.sync(guild=guild_object)
-            except discord.HTTPException as error:
+    async def sync_guild_commands(self, guild: discord.Guild) -> list[app_commands.AppCommand]:
+        guild_object = discord.Object(id=guild.id)
+        self.tree.clear_commands(guild=guild_object)
+        self.tree.copy_global_to(guild=guild_object)
+        return await self.tree.sync(guild=guild_object)
+
+    async def sync_commands_to_all_guilds(self) -> tuple[int, int]:
+        guilds = list(self.guilds)
+        results = await asyncio.gather(
+            *(self.sync_guild_commands(guild) for guild in guilds),
+            return_exceptions=True,
+        )
+        synced_guilds = 0
+        for guild, result in zip(guilds, results):
+            if isinstance(result, BaseException):
                 print(
-                    f"⚠️ Não foi possível limpar comandos locais em {guild.id}: {error}",
+                    f"⚠️ Não foi possível sincronizar comandos em {guild.id}: {result}",
                     flush=True,
                 )
-        self.guild_commands_cleaned = True
+            else:
+                synced_guilds += 1
+        self.guild_commands_synced = synced_guilds == len(guilds)
+        return synced_guilds, len(guilds)
+
+    async def sync_all_slash_commands(self) -> tuple[int, int, int]:
+        global_commands = await self.tree.sync()
+        synced_guilds, total_guilds = await self.sync_commands_to_all_guilds()
+        return len(global_commands), synced_guilds, total_guilds
 
 
 # ============================================================
@@ -377,8 +393,12 @@ async def on_ready() -> None:
     if bot.user is None:
         return
 
-    if not bot.guild_commands_cleaned:
-        await bot.clear_guild_commands()
+    if not bot.guild_commands_synced:
+        synced_guilds, total_guilds = await bot.sync_commands_to_all_guilds()
+        print(
+            f"🔁 Comandos sincronizados em {synced_guilds}/{total_guilds} servidores.",
+            flush=True,
+        )
 
     print("=" * 60, flush=True)
     print(
@@ -402,6 +422,22 @@ async def on_ready() -> None:
     if not trocar_status.is_running():
         trocar_status.start()
         print("🔄 Sistema de status iniciado.", flush=True)
+
+
+@bot.event
+async def on_guild_join(guild: discord.Guild) -> None:
+    try:
+        synced_commands = await bot.sync_guild_commands(guild)
+    except discord.HTTPException as error:
+        print(
+            f"⚠️ Não foi possível sincronizar comandos em {guild.id}: {error}",
+            flush=True,
+        )
+        return
+    print(
+        f"✅ {len(synced_commands)} comandos sincronizados em {guild.id}.",
+        flush=True,
+    )
 
 
 @bot.event

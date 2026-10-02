@@ -1062,8 +1062,13 @@ class Menu(commands.Cog):
             await self.save()
             return "Configurações do painel e permissões de acesso resetadas em todos os servidores."
         if action == "sync":
-            synced_commands = await self.bot.tree.sync()
-            return f"{len(synced_commands)} comandos globais sincronizados."
+            global_count, synced_guilds, total_guilds = (
+                await self.bot.sync_all_slash_commands()
+            )
+            return (
+                f"{global_count} comandos globais sincronizados e copiados para "
+                f"{synced_guilds}/{total_guilds} servidores."
+            )
         if action == "unsync":
             command = self.bot.tree.get_command(command_name)
             if command is None:
@@ -1071,12 +1076,18 @@ class Menu(commands.Cog):
             self.bot.tree.remove_command(command_name)
             try:
                 synced_commands = await self.bot.tree.sync()
+                synced_guilds, total_guilds = (
+                    await self.bot.sync_commands_to_all_guilds()
+                )
             except Exception:
                 self.bot.tree.add_command(command)
+                await self.bot.tree.sync()
+                await self.bot.sync_commands_to_all_guilds()
                 raise
             return (
-                f"`/{command_name}` dessincronizado globalmente. "
-                f"Restaram {len(synced_commands)} comandos globais."
+                f"`/{command_name}` removido globalmente e das guilds; "
+                f"restam {len(synced_commands)} comandos globais. "
+                f"Sincronização de guilds: {synced_guilds}/{total_guilds}."
             )
         raise ValueError("Ação restrita desconhecida.")
 
@@ -1104,13 +1115,16 @@ class Menu(commands.Cog):
             )
         await interaction.response.defer(ephemeral=True, thinking=True)
         try:
-            commands_synced = await self.bot.tree.sync()
+            global_count, synced_guilds, total_guilds = (
+                await self.bot.sync_all_slash_commands()
+            )
         except discord.HTTPException as error:
             return await interaction.followup.send(
                 f"Falha ao sincronizar comandos: {error}", ephemeral=True
             )
         await interaction.followup.send(
-            f"Sincronizados {len(commands_synced)} comandos globais. A publicação pode levar até uma hora.",
+            f"{global_count} comandos globais sincronizados e copiados para "
+            f"{synced_guilds}/{total_guilds} servidores.",
             ephemeral=True,
         )
 
