@@ -399,29 +399,5 @@ class Admin(commands.Cog):
 
         await interaction.response.send_message(f"{member.mention} foi banido, motivo: {reason}")
 
-    @app_commands.command(
-        name="setar_cargo_boost",
-        description="Associa um cargo personalizado ou família a uma pessoa",
-    )
-    @app_commands.guild_only()
-    async def set_boost_role_owner(
-        self, interaction: discord.Interaction
-    ) -> None:
-        if interaction.user.id != DEVELOPER_ID:
-            return await interaction.response.send_message(
-                "Somente o desenvolvedor pode usar este comando.", ephemeral=True
-            )
-        boost = self.bot.get_cog("Boost")
-        if boost is None or boost.pool is None:
-            return await interaction.response.send_message(
-                "O cog boost está sem conexão com o NeonDB.", ephemeral=True
-            )
-        await interaction.response.send_message(
-            "Escolha o tipo de associação para continuar.",
-            view=BoostAssignmentModePanel(self),
-            ephemeral=True,
-        )
-
-
 async def setup(bot):
     await bot.add_cog(Admin(bot))

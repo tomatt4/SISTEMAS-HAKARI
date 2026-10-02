@@ -72,6 +72,22 @@ SETTINGS = {
             "roblox_channel": ("Canal das skins Roblox", "channel"),
         },
     },
+    "ranking_call": {
+        "label": "Ranking de call",
+        "items": {
+            "ranking_call_channel": ("Canal do ranking", "channel"),
+            "ranking_call_intro": ("Embed de apresentação", "rank_intro"),
+            "ranking_call_top": ("Embed do top 10", "rank_top"),
+        },
+    },
+    "ranking_messages": {
+        "label": "Ranking de mensagens",
+        "items": {
+            "ranking_messages_channel": ("Canal do ranking", "channel"),
+            "ranking_messages_intro": ("Embed de apresentação", "rank_intro"),
+            "ranking_messages_top": ("Embed do top 10", "rank_top"),
+        },
+    },
     "modules": {
         "label": "Módulos",
         "items": {
@@ -220,6 +236,185 @@ class WelcomeAssetsModal(discord.ui.Modal):
         )
 
 
+class RankingIntroTextModal(discord.ui.Modal):
+    def __init__(self, menu: "Menu", guild_id: int, prefix: str):
+        super().__init__(title="Texto da embed de apresentação")
+        self.menu = menu
+        self.guild_id = guild_id
+        self.prefix = prefix
+        self.title_input = discord.ui.TextInput(
+            label="Title",
+            default=menu.get_value(guild_id, f"{prefix}_title", "") or "",
+            max_length=256,
+            required=False,
+        )
+        self.description_input = discord.ui.TextInput(
+            label="Description",
+            default=menu.get_value(guild_id, f"{prefix}_description", "") or "",
+            style=discord.TextStyle.paragraph,
+            max_length=4000,
+            required=False,
+        )
+        self.footer_input = discord.ui.TextInput(
+            label="Footer",
+            default=menu.get_value(guild_id, f"{prefix}_footer", "") or "",
+            max_length=2048,
+            required=False,
+        )
+        for field in (self.title_input, self.description_input, self.footer_input):
+            self.add_item(field)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await self.menu.set_values(
+            self.guild_id,
+            {
+                f"{self.prefix}_title": self.title_input.value,
+                f"{self.prefix}_description": self.description_input.value,
+                f"{self.prefix}_footer": self.footer_input.value,
+            },
+        )
+        await interaction.response.send_message(
+            "Texto da embed salvo.", ephemeral=True
+        )
+
+
+class RankingIntroImagesModal(discord.ui.Modal):
+    def __init__(self, menu: "Menu", guild_id: int, prefix: str):
+        super().__init__(title="Imagens da embed de apresentação")
+        self.menu = menu
+        self.guild_id = guild_id
+        self.prefix = prefix
+        self.thumbnail_input = discord.ui.TextInput(
+            label="Thumbnail (URL)",
+            default=menu.get_value(guild_id, f"{prefix}_thumbnail", "") or "",
+            max_length=400,
+            required=False,
+        )
+        self.image_input = discord.ui.TextInput(
+            label="Image (URL)",
+            default=menu.get_value(guild_id, f"{prefix}_image", "") or "",
+            max_length=400,
+            required=False,
+        )
+        self.title_image_input = discord.ui.TextInput(
+            label="Title Image (URL)",
+            default=menu.get_value(guild_id, f"{prefix}_title_image", "") or "",
+            max_length=400,
+            required=False,
+        )
+        for field in (
+            self.thumbnail_input,
+            self.image_input,
+            self.title_image_input,
+        ):
+            self.add_item(field)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await self.menu.set_values(
+            self.guild_id,
+            {
+                f"{self.prefix}_thumbnail": self.thumbnail_input.value.strip(),
+                f"{self.prefix}_image": self.image_input.value.strip(),
+                f"{self.prefix}_title_image": self.title_image_input.value.strip(),
+            },
+        )
+        await interaction.response.send_message(
+            "Imagens da embed salvas.", ephemeral=True
+        )
+
+
+class RankingTopModal(discord.ui.Modal):
+    def __init__(self, menu: "Menu", guild_id: int, prefix: str):
+        super().__init__(title="Configurar embed do top 10")
+        self.menu = menu
+        self.guild_id = guild_id
+        self.prefix = prefix
+        self.title_input = discord.ui.TextInput(
+            label="Title",
+            default=menu.get_value(guild_id, f"{prefix}_title", "") or "",
+            max_length=256,
+            required=False,
+        )
+        self.thumbnail_input = discord.ui.TextInput(
+            label="Thumbnail (URL)",
+            default=menu.get_value(guild_id, f"{prefix}_thumbnail", "") or "",
+            max_length=400,
+            required=False,
+        )
+        self.add_item(self.title_input)
+        self.add_item(self.thumbnail_input)
+
+    async def on_submit(self, interaction: discord.Interaction) -> None:
+        await self.menu.set_values(
+            self.guild_id,
+            {
+                f"{self.prefix}_title": self.title_input.value,
+                f"{self.prefix}_thumbnail": self.thumbnail_input.value.strip(),
+            },
+        )
+        await interaction.response.send_message(
+            "Embed do ranking salva.", ephemeral=True
+        )
+
+
+class RankingIntroConfigView(discord.ui.View):
+    def __init__(self, menu: "Menu", guild_id: int, prefix: str):
+        super().__init__(timeout=300)
+        self.menu = menu
+        self.guild_id = guild_id
+        self.prefix = prefix
+        self.add_item(RankingIntroTextButton())
+        self.add_item(RankingIntroImagesButton())
+
+
+class RankingIntroTextButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Editar texto", style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: RankingIntroConfigView = self.view
+        await interaction.response.send_modal(
+            RankingIntroTextModal(view.menu, view.guild_id, view.prefix)
+        )
+
+
+class RankingIntroImagesButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Editar imagens", style=discord.ButtonStyle.secondary)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: RankingIntroConfigView = self.view
+        await interaction.response.send_modal(
+            RankingIntroImagesModal(view.menu, view.guild_id, view.prefix)
+        )
+
+
+class RankingIntroButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Editar embed", style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        prefix = view.setting
+        await interaction.response.send_message(
+            "Escolha quais campos da embed deseja editar.",
+            view=RankingIntroConfigView(view.menu, interaction.guild_id, prefix),
+            ephemeral=True,
+        )
+
+
+class RankingTopButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(label="Editar embed", style=discord.ButtonStyle.primary)
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        prefix = view.setting
+        await interaction.response.send_modal(
+            RankingTopModal(view.menu, interaction.guild_id, prefix)
+        )
+
+
 class CategorySelect(discord.ui.Select):
     def __init__(self):
         options = [
@@ -294,6 +489,8 @@ class ChannelSettingSelect(discord.ui.ChannelSelect):
             "welcome": "Selecione o canal de boas-vindas",
             "insta": "Selecione o canal do Instagram fictício",
             "roblox": "Selecione o canal das skins Roblox",
+            "ranking_call": "Selecione o canal do ranking de call",
+            "ranking_messages": "Selecione o canal do ranking de mensagens",
         }.get(view.category, "Selecione o canal deste módulo")
         super().__init__(
             placeholder=placeholder,
@@ -645,7 +842,28 @@ class MenuView(discord.ui.View):
             return embed
         label, kind = SETTINGS[self.category]["items"][self.setting]
         value = self.menu.get_value(guild.id, self.setting)
-        if kind == "welcome_text":
+        if kind == "rank_intro":
+            prefix = self.setting
+            configured = any(
+                self.menu.get_value(guild.id, f"{prefix}_{suffix}")
+                for suffix in (
+                    "title",
+                    "description",
+                    "footer",
+                    "thumbnail",
+                    "image",
+                    "title_image",
+                )
+            )
+            display = "Embed configurada" if configured else "Embed não configurada"
+        elif kind == "rank_top":
+            prefix = self.setting
+            configured = any(
+                self.menu.get_value(guild.id, f"{prefix}_{suffix}")
+                for suffix in ("title", "thumbnail")
+            )
+            display = "Embed configurada" if configured else "Embed não configurada"
+        elif kind == "welcome_text":
             configured = bool(
                 self.menu.get_value(guild.id, "welcome_embed_title")
                 or self.menu.get_value(guild.id, "welcome_embed_description")
@@ -702,6 +920,10 @@ class MenuView(discord.ui.View):
                 self.add_item(WelcomeTextButton())
             elif kind == "welcome_assets":
                 self.add_item(WelcomeAssetsButton())
+            elif kind == "rank_intro":
+                self.add_item(RankingIntroButton())
+            elif kind == "rank_top":
+                self.add_item(RankingTopButton())
             elif kind == "toggle":
                 enabled = self.menu.get_value(self.guild_id, self.setting, False)
                 self.add_item(ToggleSettingButton(self, bool(enabled)))
