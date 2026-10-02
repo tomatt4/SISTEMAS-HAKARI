@@ -23,6 +23,7 @@ MODULES = {
     "utilidades": "Utilidades",
     "welcome": "Boas-vindas",
     "insta": "Instagram",
+    "roblox": "Avatares Roblox",
 }
 
 SETTINGS = {
@@ -63,6 +64,12 @@ SETTINGS = {
         "label": "Instagram fictício",
         "items": {
             "insta_channel": ("Canal dos posts", "channel"),
+        },
+    },
+    "roblox": {
+        "label": "Avatares Roblox",
+        "items": {
+            "roblox_channel": ("Canal das skins Roblox", "channel"),
         },
     },
     "modules": {
@@ -286,6 +293,7 @@ class ChannelSettingSelect(discord.ui.ChannelSelect):
         placeholder = {
             "welcome": "Selecione o canal de boas-vindas",
             "insta": "Selecione o canal do Instagram fictício",
+            "roblox": "Selecione o canal das skins Roblox",
         }.get(view.category, "Selecione o canal deste módulo")
         super().__init__(
             placeholder=placeholder,
@@ -949,6 +957,8 @@ class Menu(commands.Cog):
             )
         if module == "insta":
             return bool(self.get_value(guild_id, "insta_channel"))
+        if module == "roblox":
+            return bool(self.get_value(guild_id, "roblox_channel"))
         return True
 
     def overview_embed(self, guild: discord.Guild) -> discord.Embed:
