@@ -1,14 +1,229 @@
 import datetime
-import json
-import os
 from typing import Optional
 
-import asyncpg
 import discord
 from discord.ext import commands
 from discord import app_commands
 
 from .menu import DEVELOPER_ID
+
+
+class BoostAssignmentView(discord.ui.View):
+    def __init__(self, admin: "Admin"):
+        super().__init__(timeout=180)
+        self.admin = admin
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        if interaction.user.id != DEVELOPER_ID:
+            await interaction.response.send_message(
+                "Somente o desenvolvedor pode usar este painel.", ephemeral=True
+            )
+            return False
+        return True
+
+
+class BoostAssignmentModeSelect(discord.ui.Select):
+    def __init__(self):
+        super().__init__(
+            placeholder="Escolha o tipo de cargo",
+            min_values=1,
+            max_values=1,
+            options=[
+                discord.SelectOption(
+                    label="Setar cargo personalizado", value="personal"
+                ),
+                discord.SelectOption(label="Setar família", value="family"),
+            ],
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: BoostAssignmentView = self.view
+        details_view = BoostAssignmentDetailsView(view.admin, self.values[0])
+        await interaction.response.edit_message(
+            content=details_view.status_text(interaction.guild),
+            view=details_view,
+        )
+
+
+class BoostAssignmentModePanel(BoostAssignmentView):
+    def __init__(self, admin: "Admin"):
+        super().__init__(admin)
+        self.add_item(BoostAssignmentModeSelect())
+
+
+class BoostAssignmentRoleSelect(discord.ui.RoleSelect):
+    def __init__(self):
+        super().__init__(
+            placeholder="Selecione o cargo",
+            min_values=1,
+            max_values=1,
+            row=0,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: BoostAssignmentDetailsView = self.view
+        view.role_id = self.values[0].id
+        await interaction.response.edit_message(
+            content=view.status_text(interaction.guild), view=view
+        )
+
+
+class BoostAssignmentMemberSelect(discord.ui.UserSelect):
+    def __init__(self):
+        super().__init__(
+            placeholder="Selecione a pessoa dona do cargo",
+            min_values=1,
+            max_values=1,
+            row=1,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: BoostAssignmentDetailsView = self.view
+        view.user_id = self.values[0].id
+        await interaction.response.edit_message(
+            content=view.status_text(interaction.guild), view=view
+        )
+
+
+class BoostAssignmentConfirmButton(discord.ui.Button):
+    def __init__(self):
+        super().__init__(
+            label="Confirmar associação",
+            style=discord.ButtonStyle.success,
+            row=2,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: BoostAssignmentDetailsView = self.view
+        await view.confirm(interaction)
+
+
+class BoostAssignmentDetailsView(BoostAssignmentView):
+    def __init__(self, admin: "Admin", mode: str):
+        super().__init__(admin)
+        self.mode = mode
+        self.role_id: int | None = None
+        self.user_id: int | None = None
+        self.add_item(BoostAssignmentRoleSelect())
+        self.add_item(BoostAssignmentMemberSelect())
+        self.add_item(BoostAssignmentConfirmButton())
+
+    def status_text(self, guild: discord.Guild | None) -> str:
+        mode_label = (
+            "cargo personalizado" if self.mode == "personal" else "família"
+        )
+        role = guild.get_role(self.role_id) if guild and self.role_id else None
+        role_text = role.mention if role else "não selecionado"
+        user_text = f"<@{self.user_id}>" if self.user_id else "não selecionada"
+        return (
+            f"Tipo: **{mode_label}**\n"
+            f"Cargo: {role_text}\n"
+            f"Pessoa dona: {user_text}\n\n"
+            "Selecione o cargo e a pessoa, depois confirme."
+        )
+
+    async def confirm(self, interaction: discord.Interaction) -> None:
+        guild = interaction.guild
+        if guild is None or self.role_id is None or self.user_id is None:
+            return await interaction.response.send_message(
+                "Selecione um cargo e uma pessoa antes de confirmar.",
+                ephemeral=True,
+            )
+
+        boost = self.admin.bot.get_cog("Boost")
+        if boost is None or boost.pool is None:
+            return await interaction.response.send_message(
+                "O cog boost está sem conexão com o NeonDB.", ephemeral=True
+            )
+
+        role = guild.get_role(self.role_id)
+        member = guild.get_member(self.user_id)
+        bot_member = guild.me
+        if role is None or member is None:
+            return await interaction.response.send_message(
+                "O cargo ou a pessoa selecionada não está mais neste servidor.",
+                ephemeral=True,
+            )
+        if role.is_default() or role.managed:
+            return await interaction.response.send_message(
+                "Não é possível registrar o cargo padrão ou um cargo gerenciado.",
+                ephemeral=True,
+            )
+        if bot_member is None or role >= bot_member.top_role:
+            return await interaction.response.send_message(
+                "Meu cargo precisa estar acima do cargo selecionado.",
+                ephemeral=True,
+            )
+
+        key = boost.key(guild.id, member.id)
+        previous_family = boost.families.get(key)
+        previous_personal = boost.personal_roles.get(key)
+        added_role = role not in member.roles
+        if added_role:
+            try:
+                await member.add_roles(
+                    role,
+                    reason=f"Associação de cargo Boost pelo desenvolvedor {interaction.user}",
+                )
+            except discord.Forbidden:
+                return await interaction.response.send_message(
+                    "Não tenho permissão para atribuir esse cargo.", ephemeral=True
+                )
+            except discord.HTTPException as error:
+                return await interaction.response.send_message(
+                    f"O Discord não aceitou a atribuição do cargo: {error}",
+                    ephemeral=True,
+                )
+
+        if self.mode == "family":
+            voice_channel_id = (
+                previous_family.get("voice_channel_id")
+                if previous_family is not None
+                else None
+            )
+            boost.families[key] = {
+                "role_id": role.id,
+                "voice_channel_id": voice_channel_id,
+            }
+        else:
+            boost.personal_roles[key] = role.id
+
+        try:
+            await boost.save()
+        except Exception as error:
+            if previous_family is None:
+                boost.families.pop(key, None)
+            else:
+                boost.families[key] = previous_family
+            if previous_personal is None:
+                boost.personal_roles.pop(key, None)
+            else:
+                boost.personal_roles[key] = previous_personal
+            if added_role:
+                try:
+                    await member.remove_roles(
+                        role, reason="Falha ao registrar associação no NeonDB"
+                    )
+                except discord.HTTPException:
+                    pass
+            print(
+                f"Falha ao registrar associação Boost: {type(error).__name__}: {error}",
+                flush=True,
+            )
+            return await interaction.response.send_message(
+                "Não consegui salvar a associação no NeonDB. Consulte os logs do bot.",
+                ephemeral=True,
+            )
+
+        type_label = "família" if self.mode == "family" else "cargo personalizado"
+        await interaction.response.edit_message(
+            content=(
+                f"Associação salva: {role.mention} foi registrado como {type_label} "
+                f"de {member.mention}, e o cargo foi atribuído."
+            ),
+            view=None,
+        )
+
 
 class Admin(commands.Cog):
     def __init__(self, bot):
@@ -184,86 +399,28 @@ class Admin(commands.Cog):
 
         await interaction.response.send_message(f"{member.mention} foi banido, motivo: {reason}")
 
-    @commands.command(name="salvarcargos")
-    async def save_roles_temporarily(self, ctx: commands.Context) -> None:
-        if ctx.guild is None:
-            return await ctx.send("Este comando só pode ser usado em um servidor.")
-        if ctx.author.id not in {ctx.guild.owner_id, DEVELOPER_ID}:
-            return await ctx.send("Somente o dono do servidor ou o desenvolvedor do bot pode usar este comando.")
-
-        upper_role = ctx.guild.get_role(1540034106270679110)
-        lower_role = ctx.guild.get_role(1541324825380003930)
-        if upper_role is None or lower_role is None:
-            return await ctx.send("Não encontrei um ou ambos os cargos de referência neste servidor.")
-        if upper_role.position <= lower_role.position:
-            return await ctx.send("Os cargos de referência estão em ordem inválida.")
-
-        database_url = os.getenv("DATABASE") or os.getenv("DATABASE_URL")
-        if not database_url:
-            return await ctx.send("A variável DATABASE não está definida no ambiente do bot.")
-
-        roles = [
-            role
-            for role in ctx.guild.roles
-            if lower_role.position < role.position < upper_role.position
-        ]
-        if not roles:
-            return await ctx.send("Não há cargos entre os dois cargos de referência.")
-
-        records = [
-            (
-                ctx.guild.id,
-                role.id,
-                json.dumps(
-                    {
-                        "name": role.name,
-                        "position": role.position,
-                        "permissions": role.permissions.value,
-                        "color": role.color.value,
-                        "hoist": role.hoist,
-                        "mentionable": role.mentionable,
-                        "managed": role.managed,
-                    }
-                ),
+    @app_commands.command(
+        name="setar_cargo_boost",
+        description="Associa um cargo personalizado ou família a uma pessoa",
+    )
+    @app_commands.guild_only()
+    async def set_boost_role_owner(
+        self, interaction: discord.Interaction
+    ) -> None:
+        if interaction.user.id != DEVELOPER_ID:
+            return await interaction.response.send_message(
+                "Somente o desenvolvedor pode usar este comando.", ephemeral=True
             )
-            for role in roles
-        ]
-        try:
-            async with asyncpg.create_pool(
-                dsn=database_url,
-                ssl="require",
-                min_size=1,
-                max_size=2,
-                command_timeout=20,
-            ) as pool:
-                await pool.execute(
-                    """
-                    CREATE TABLE IF NOT EXISTS temporary_role_backups (
-                        guild_id BIGINT NOT NULL,
-                        role_id BIGINT NOT NULL,
-                        role_data JSONB NOT NULL,
-                        captured_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-                        PRIMARY KEY (guild_id, role_id)
-                    )
-                    """
-                )
-                await pool.executemany(
-                    """
-                    INSERT INTO temporary_role_backups (guild_id, role_id, role_data)
-                    VALUES ($1, $2, $3::jsonb)
-                    ON CONFLICT (guild_id, role_id) DO UPDATE SET
-                        role_data = EXCLUDED.role_data,
-                        captured_at = NOW()
-                    """,
-                    records,
-                )
-        except Exception as error:
-            print(
-                f"Falha ao salvar cargos no DATABASE: {type(error).__name__}: {error}",
-                flush=True,
+        boost = self.bot.get_cog("Boost")
+        if boost is None or boost.pool is None:
+            return await interaction.response.send_message(
+                "O cog boost está sem conexão com o NeonDB.", ephemeral=True
             )
-            return await ctx.send("Não consegui conectar ou salvar no banco. Consulte os logs do bot.")
-        await ctx.send(f"Salvei {len(roles)} cargo(s) no DATABASE.")
+        await interaction.response.send_message(
+            "Escolha o tipo de associação para continuar.",
+            view=BoostAssignmentModePanel(self),
+            ephemeral=True,
+        )
 
 
 async def setup(bot):
