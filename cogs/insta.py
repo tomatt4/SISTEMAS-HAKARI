@@ -68,9 +68,11 @@ class InstaPostView(discord.ui.View):
 class LikeButton(discord.ui.Button):
     def __init__(self, cog: "Insta", post_id: int):
         super().__init__(
-            label="Curtir",
             style=discord.ButtonStyle.primary,
             custom_id=f"insta:like:{post_id}",
+            emoji=discord.PartialEmoji.from_str(
+                "<:White_Heart:1555601989633712159>"
+            ),
         )
         self.cog = cog
         self.post_id = post_id
@@ -126,9 +128,11 @@ class LikeButton(discord.ui.Button):
 class CommentButton(discord.ui.Button):
     def __init__(self, cog: "Insta", post_id: int):
         super().__init__(
-            label="Comentar",
             style=discord.ButtonStyle.secondary,
             custom_id=f"insta:comment:{post_id}",
+            emoji=discord.PartialEmoji.from_str(
+                "<:ChatWhite1:1555602133519171645>"
+            ),
         )
         self.cog = cog
         self.post_id = post_id
@@ -153,9 +157,11 @@ class CommentButton(discord.ui.Button):
 class CommentsButton(discord.ui.Button):
     def __init__(self, cog: "Insta", post_id: int):
         super().__init__(
-            label="Comentários",
             style=discord.ButtonStyle.secondary,
             custom_id=f"insta:comments:{post_id}",
+            emoji=discord.PartialEmoji.from_str(
+                "<:chat_icon_white:1555602208337432699>"
+            ),
         )
         self.cog = cog
         self.post_id = post_id
@@ -182,9 +188,11 @@ class CommentsButton(discord.ui.Button):
 class DeletePostButton(discord.ui.Button):
     def __init__(self, cog: "Insta", post_id: int):
         super().__init__(
-            label="Apagar post",
             style=discord.ButtonStyle.danger,
             custom_id=f"insta:delete:{post_id}",
+            emoji=discord.PartialEmoji.from_str(
+                "<:ml_trash_can:1555603158141505657>"
+            ),
         )
         self.cog = cog
         self.post_id = post_id
@@ -458,7 +466,7 @@ class Insta(commands.Cog):
         )
         embed.set_author(name=author_name, icon_url=author_avatar)
         embed.set_image(url=f"attachment://{image_filename}")
-        embed.set_footer(text=f"Curtir: {likes} · {guild.name}")
+        embed.set_footer(text=f"Curtidas: {likes} · {guild.name}")
         return embed
 
     async def reject_message(self, message: discord.Message, reason: str) -> None:
