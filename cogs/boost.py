@@ -280,6 +280,22 @@ class Boost(commands.Cog):
         if self.pool is not None:
             await self.pool.close()
 
+    def save_local_data(self) -> None:
+        try:
+            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
+            temporary_path = self.storage_path.with_suffix(".tmp")
+            temporary_path.write_text(
+                json.dumps(
+                    {"families": self.families, "personal_roles": self.personal_roles},
+                    ensure_ascii=False,
+                    indent=2,
+                ),
+                encoding="utf-8",
+            )
+            temporary_path.replace(self.storage_path)
+        except OSError as error:
+            print(f"Não foi possível atualizar o backup local do boost: {error}")
+
     async def migrate_local_data(self) -> None:
         if self.pool is None:
             return
@@ -416,7 +432,16 @@ class Boost(commands.Cog):
         if not isinstance(member, discord.Member):
             return False
         vip_role = self.configured_role_id(member.guild, "vip_personal_role")
-        return self.can_manage_family(member) or self.has_role(member, vip_role)
+        saved_role_id = self.personal_roles.get(self.key(member.guild.id, member.id))
+        has_saved_role = (
+            saved_role_id is not None
+            and member.guild.get_role(int(saved_role_id)) is not None
+        )
+        return (
+            has_saved_role
+            or self.can_manage_family(member)
+            or self.has_role(member, vip_role)
+        )
 
     def family_access_message(self, member: discord.abc.User) -> str:
         vip_role = (
@@ -466,20 +491,7 @@ class Boost(commands.Cog):
                 records,
             )
 
-        try:
-            self.storage_path.parent.mkdir(parents=True, exist_ok=True)
-            temporary_path = self.storage_path.with_suffix(".tmp")
-            temporary_path.write_text(
-                json.dumps(
-                    {"families": self.families, "personal_roles": self.personal_roles},
-                    ensure_ascii=False,
-                    indent=2,
-                ),
-                encoding="utf-8",
-            )
-            temporary_path.replace(self.storage_path)
-        except OSError as error:
-            print(f"Não foi possível atualizar o backup local do boost: {error}")
+        self.save_local_data()
 
     async def repair_managed_roles(self, guild: discord.Guild) -> None:
         trigger_role_id = self.configured_role_id(guild, "repair_below_role")
@@ -591,6 +603,101 @@ class Boost(commands.Cog):
     async def on_ready(self) -> None:
         for guild in self.bot.guilds:
             await self.repair_managed_roles(guild)
+
+    @commands.Cog.listener()
+    async def on_guild_role_delete(self, role: discord.Role) -> None:
+        guild_id = role.guild.id
+        guild_key_prefix = f"{guild_id}:"
+
+        for key, family in list(self.families.items()):
+            if key.startswith(guild_key_prefix) and family.get("role_id") == role.id:
+                self.families.pop(key, None)
+
+        for key, role_id in list(self.personal_roles.items()):
+            if key.startswith(guild_key_prefix) and role_id == role.id:
+                self.personal_roles.pop(key, None)
+
+        for key in list(self.role_icons):
+            parts = key.split(":")
+            if (
+                len(parts) == 3
+                and parts[0] == str(guild_id)
+                and parts[2] == str(role.id)
+            ):
+                self.role_icons.pop(key, None)
+
+        for key, pending in list(self.pending_icon_edits.items()):
+            if key.startswith(guild_key_prefix) and pending.get("role_id") == role.id:
+                self.pending_icon_edits.pop(key, None)
+
+        self.save_local_data()
+
+        if self.pool is None:
+            print(
+                f"Cargo excluído {role.id} em {guild_id}, mas não foi possível limpar o NeonDB: pool indisponível."
+            )
+            return
+
+        try:
+            async with self.pool.acquire() as connection:
+                async with connection.transaction():
+                    await connection.execute(
+                        """
+                        UPDATE boost_role_owners
+                        SET family_role_id = CASE
+                                WHEN family_role_id = $2 THEN NULL
+                                ELSE family_role_id
+                            END,
+                            personal_role_id = CASE
+                                WHEN personal_role_id = $2 THEN NULL
+                                ELSE personal_role_id
+                            END,
+                            voice_channel_id = CASE
+                                WHEN family_role_id = $2 THEN NULL
+                                ELSE voice_channel_id
+                            END,
+                            updated_at = NOW()
+                        WHERE guild_id = $1
+                          AND (family_role_id = $2 OR personal_role_id = $2)
+                        """,
+                        guild_id,
+                        role.id,
+                    )
+                    await connection.execute(
+                        """
+                        DELETE FROM boost_role_owners
+                        WHERE guild_id = $1
+                          AND family_role_id IS NULL
+                          AND personal_role_id IS NULL
+                        """,
+                        guild_id,
+                    )
+                    await connection.execute(
+                        """
+                        DELETE FROM boost_role_icons
+                        WHERE guild_id = $1 AND role_id = $2
+                        """,
+                        guild_id,
+                        role.id,
+                    )
+                    backup_table_exists = await connection.fetchval(
+                        "SELECT to_regclass('temporary_role_backups') IS NOT NULL"
+                    )
+                    if backup_table_exists:
+                        await connection.execute(
+                            """
+                            DELETE FROM temporary_role_backups
+                            WHERE guild_id = $1 AND role_id = $2
+                            """,
+                            guild_id,
+                            role.id,
+                        )
+        except Exception as error:
+            print(
+                f"Não foi possível limpar o cargo excluído {role.id} do NeonDB: "
+                f"{type(error).__name__}: {error}",
+                flush=True,
+            )
 
     async def create_managed_role(
         self, guild: discord.Guild, member: discord.Member, name_prefix: str
