@@ -22,6 +22,7 @@ MODULES = {
     "tomate": "Tomates",
     "utilidades": "Utilidades",
     "welcome": "Boas-vindas",
+    "insta": "Instagram",
 }
 
 SETTINGS = {
@@ -56,6 +57,12 @@ SETTINGS = {
             "welcome_ping_member": ("Mencionar o novo membro", "toggle"),
             "welcome_text": ("Textos da embed", "welcome_text"),
             "welcome_assets": ("Thumbnail, imagem e ícone", "welcome_assets"),
+        },
+    },
+    "insta": {
+        "label": "Instagram fictício",
+        "items": {
+            "insta_channel": ("Canal dos posts", "channel"),
         },
     },
     "modules": {
@@ -936,6 +943,8 @@ class Menu(commands.Cog):
                 self.get_value(guild_id, "welcome_channel")
                 and self.get_value(guild_id, "welcome_embed_description")
             )
+        if module == "insta":
+            return bool(self.get_value(guild_id, "insta_channel"))
         return True
 
     def overview_embed(self, guild: discord.Guild) -> discord.Embed:
