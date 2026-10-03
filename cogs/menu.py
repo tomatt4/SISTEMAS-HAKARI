@@ -29,15 +29,21 @@ MODULES = {
 SETTINGS = {
     "boost": {
         "label": "Sistema de Boost",
+        "description": (
+            "Configure quem pode usar os benefícios e onde os cargos criados "
+            "ficam na hierarquia. Para o ajuste automático funcionar, os cargos "
+            "de referência inferiores devem ficar abaixo do limite superior, "
+            "e o cargo do bot deve ficar acima dele."
+        ),
         "items": {
-            "booster_role": ("Cargo Booster", "role"),
-            "vip_full_role": ("Cargo VIP completo", "role"),
-            "vip_personal_role": ("Cargo VIP pessoal", "role"),
-            "role_position_upper": ("Limite superior dos cargos", "role"),
-            "role_position_lower": ("Posição dos cargos pessoais", "role"),
-            "family_position_lower": ("Posição dos cargos de família", "role"),
-            "repair_below_role": ("Cargo de referência para reparo", "role"),
-            "family_member_limit": ("Limite de membros da família", "number"),
+            "booster_role": ("Cargo que dá acesso de booster", "role"),
+            "vip_full_role": ("Cargo VIP com acesso à família", "role"),
+            "vip_personal_role": ("Cargo VIP com acesso ao cargo pessoal", "role"),
+            "role_position_upper": ("Limite superior dos cargos criados", "role"),
+            "role_position_lower": ("Referência abaixo dos cargos pessoais", "role"),
+            "family_position_lower": ("Referência abaixo dos cargos da família", "role"),
+            "repair_below_role": ("Cargo que aciona o ajuste automático", "role"),
+            "family_member_limit": ("Máximo de pessoas por família", "number"),
         },
     },
     "tomate": {
@@ -97,6 +103,42 @@ SETTINGS = {
     },
 }
 
+BOOST_SETTING_DESCRIPTIONS = {
+    "booster_role": "Quem tiver este cargo poderá usar os recursos de booster.",
+    "vip_full_role": "Este cargo libera o gerenciamento da família, como o boost.",
+    "vip_personal_role": "Este cargo libera a criação de um cargo personalizado.",
+    "role_position_upper": (
+        "Define o limite acima dos cargos criados. O cargo do bot precisa ficar "
+        "acima deste cargo na hierarquia."
+    ),
+    "role_position_lower": (
+        "Os cargos pessoais ficam logo acima deste cargo. Ele precisa ficar "
+        "abaixo do limite superior."
+    ),
+    "family_position_lower": (
+        "Os cargos de família ficam logo acima deste cargo. Ele precisa ficar "
+        "abaixo do limite superior."
+    ),
+    "repair_below_role": (
+        "Quando os cargos gerenciados estão abaixo deste cargo, o bot verifica "
+        "e corrige suas posições."
+    ),
+    "family_member_limit": (
+        "Quantidade máxima de pessoas na família, incluindo quem a criou."
+    ),
+}
+
+BOOST_SETTING_OPTION_DESCRIPTIONS = {
+    "booster_role": "Libera os recursos de booster para quem tiver este cargo.",
+    "vip_full_role": "Libera o gerenciamento da família para quem tiver este cargo.",
+    "vip_personal_role": "Libera a criação de um cargo personalizado.",
+    "role_position_upper": "Limite superior; o cargo do bot deve ficar acima dele.",
+    "role_position_lower": "Os cargos pessoais ficam logo acima deste cargo.",
+    "family_position_lower": "Os cargos de família ficam logo acima deste cargo.",
+    "repair_below_role": "Referência para o bot verificar e corrigir posições.",
+    "family_member_limit": "Máximo de pessoas na família, incluindo você.",
+}
+
 
 class NumberSettingModal(discord.ui.Modal):
     def __init__(self, menu: "Menu", guild_id: int, key: str, label: str):
@@ -104,9 +146,10 @@ class NumberSettingModal(discord.ui.Modal):
         self.menu = menu
         self.guild_id = guild_id
         self.key = key
+        max_value = 25 if key == "family_member_limit" else 9999
         self.value_input = discord.ui.TextInput(
             label=label,
-            placeholder="Digite um número inteiro",
+            placeholder=f"Digite um número entre 1 e {max_value}",
             min_length=1,
             max_length=4,
         )
@@ -115,13 +158,12 @@ class NumberSettingModal(discord.ui.Modal):
     async def on_submit(self, interaction: discord.Interaction) -> None:
         try:
             value = int(self.value_input.value)
-            if value < 1 or value > 9999:
-                raise ValueError
-            if self.key == "family_member_limit" and value > 25:
+            max_value = 25 if self.key == "family_member_limit" else 9999
+            if value < 1 or value > max_value:
                 raise ValueError
         except ValueError:
             return await interaction.response.send_message(
-                "Informe um número entre 1 e 9999.", ephemeral=True
+                f"Informe um número entre 1 e {max_value}.", ephemeral=True
             )
         await self.menu.set_value(self.guild_id, self.key, value)
         await interaction.response.send_message(
@@ -418,7 +460,11 @@ class RankingTopButton(discord.ui.Button):
 class CategorySelect(discord.ui.Select):
     def __init__(self):
         options = [
-            discord.SelectOption(label=details["label"], value=key)
+            discord.SelectOption(
+                label=details["label"],
+                value=key,
+                description=details.get("description"),
+            )
             for key, details in SETTINGS.items()
         ]
         super().__init__(
@@ -442,7 +488,15 @@ class SettingSelect(discord.ui.Select):
     def __init__(self, view: "MenuView"):
         category = SETTINGS[view.category]
         options = [
-            discord.SelectOption(label=label, value=key, description=f"Tipo: {kind}")
+            discord.SelectOption(
+                label=label,
+                value=key,
+                description=(
+                    BOOST_SETTING_OPTION_DESCRIPTIONS[key]
+                    if view.category == "boost"
+                    else f"Tipo: {kind}"
+                ),
+            )
             for key, (label, kind) in category["items"].items()
         ]
         super().__init__(
@@ -463,8 +517,13 @@ class SettingSelect(discord.ui.Select):
 
 class RoleSettingSelect(discord.ui.RoleSelect):
     def __init__(self, view: "MenuView", multiple: bool):
+        placeholder = (
+            f"Escolha: {SETTINGS[view.category]['items'][view.setting][0]}"
+            if view.category == "boost"
+            else "Selecione cargo(s) deste servidor"
+        )
         super().__init__(
-            placeholder="Selecione cargo(s) deste servidor",
+            placeholder=placeholder,
             min_values=0,
             max_values=10 if multiple else 1,
         )
@@ -838,7 +897,17 @@ class MenuView(discord.ui.View):
 
     def embed(self, guild: discord.Guild) -> discord.Embed:
         embed = self.menu.overview_embed(guild)
-        if not self.category or not self.setting:
+        if not self.category:
+            return embed
+        if self.category == "boost":
+            if self.setting:
+                embed.description += (
+                    "\n\n"
+                    + BOOST_SETTING_DESCRIPTIONS[self.setting]
+                )
+            else:
+                embed.description += "\n\n" + SETTINGS["boost"]["description"]
+        if not self.setting:
             return embed
         label, kind = SETTINGS[self.category]["items"][self.setting]
         value = self.menu.get_value(guild.id, self.setting)
