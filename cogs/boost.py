@@ -451,8 +451,16 @@ class Boost(commands.Cog):
     def can_manage_family(self, member: discord.abc.User) -> bool:
         if not isinstance(member, discord.Member):
             return False
-        vip_role = self.configured_role_id(member.guild, "vip_full_role")
-        return self.is_booster(member) or self.has_role(member, vip_role)
+        vip_full_role = self.configured_role_id(member.guild, "vip_full_role")
+        vip_personal_role = self.configured_role_id(member.guild, "vip_personal_role")
+        booster_role = self.configured_role_id(member.guild, "booster_role")
+        return (
+            self.has_role(member, vip_full_role)
+            and vip_full_role != vip_personal_role
+        ) or (
+            self.has_role(member, booster_role)
+            and booster_role != vip_personal_role
+        )
 
     def can_manage_personal_role(self, member: discord.abc.User) -> bool:
         if not isinstance(member, discord.Member):
