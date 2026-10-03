@@ -5,7 +5,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from .menu import DEVELOPER_ID
+from .menu import DEVELOPER_ID, WARN_PUNISHMENT_CHOICES
 
 
 class BoostAssignmentView(discord.ui.View):
@@ -251,48 +251,181 @@ class Admin(commands.Cog):
         except:
             return None
 
+    async def _apply_warning_punishment(
+        self,
+        actor: discord.Member,
+        member: discord.Member,
+        guild: discord.Guild,
+        reason: str,
+    ) -> tuple[bool, str]:
+        menu = self.bot.get_cog("Menu")
+        punishment = (
+            menu.get_value(guild.id, "warn_additional_punishment", "none")
+            if menu
+            else "none"
+        )
+        if punishment not in WARN_PUNISHMENT_CHOICES:
+            return False, "A punição adicional configurada é inválida. Revise o /menu."
+        if punishment == "none":
+            return True, ""
+
+        permission_by_punishment = {
+            "timeout": ("moderate_members", "silenciar"),
+            "kick": ("kick_members", "expulsar"),
+            "ban": ("ban_members", "banir"),
+        }
+        permission, action_label = permission_by_punishment[punishment]
+        if not getattr(actor.guild_permissions, permission):
+            return (
+                False,
+                f"Você precisa da permissão para {action_label} membros para aplicar "
+                "a punição adicional configurada.",
+            )
+        bot_member = guild.me
+        if bot_member is None or not getattr(
+            bot_member.guild_permissions, permission
+        ):
+            return (
+                False,
+                f"Não tenho permissão para {action_label} membros.",
+            )
+
+        if punishment == "timeout":
+            try:
+                duration_minutes = int(
+                    menu.get_value(guild.id, "warn_timeout_minutes", 10)
+                    if menu
+                    else 10
+                )
+            except (TypeError, ValueError):
+                return (
+                    False,
+                    "A duração do silenciamento está inválida. Configure de 1 "
+                    "a 40320 minutos no /menu.",
+                )
+            if not 1 <= duration_minutes <= 40320:
+                return (
+                    False,
+                    "A duração do silenciamento está inválida. Configure de 1 "
+                    "a 40320 minutos no /menu.",
+                )
+            try:
+                until = discord.utils.utcnow() + datetime.timedelta(
+                    minutes=duration_minutes
+                )
+                await member.timeout(
+                    until, reason=f"Advertência por {actor}: {reason}"
+                )
+                return True, f"Também foi silenciado por {duration_minutes} minutos."
+            except (discord.Forbidden, discord.HTTPException) as error:
+                return False, f"Não foi possível aplicar a punição adicional: {error}"
+
+        try:
+            if punishment == "kick":
+                await member.kick(reason=f"Advertência por {actor}: {reason}")
+                return True, "Também foi expulso."
+            await member.ban(reason=f"Advertência por {actor}: {reason}")
+            return True, "Também foi banido."
+        except (discord.Forbidden, discord.HTTPException) as error:
+            return False, f"Não foi possível aplicar a punição adicional: {error}"
+
     # ===== WARN COMMAND =====
     @commands.command(name="warn")
     @commands.has_permissions(manage_roles=True)
     async def warn_prefix(self, ctx: commands.Context, member: discord.Member, *, reason: str = "sem motivo informado"):
         """Avisa um membro (prefixo)"""
+        if ctx.guild is None or not isinstance(ctx.author, discord.Member):
+            return await ctx.send("Este comando só pode ser usado em um servidor.")
         allowed, message = self._can_act(ctx.author, member, ctx.guild)
         if not allowed:
             return await ctx.send(message)
 
+        applied, punishment_message = await self._apply_warning_punishment(
+            ctx.author, member, ctx.guild, reason
+        )
         embed = discord.Embed(
             title="⚠️ Aviso",
-            description=f"{member.mention} foi avisado",
+            description=f"{member.mention} recebeu uma advertência.",
             color=discord.Color.gold()
         )
         embed.add_field(name="motivo", value=reason, inline=False)
+        if punishment_message:
+            embed.add_field(
+                name=(
+                    "Punição adicional"
+                    if applied
+                    else "Punição adicional não aplicada"
+                ),
+                value=punishment_message,
+                inline=False,
+            )
         embed.set_footer(text=f"aviso por {ctx.author}", icon_url=ctx.author.display_avatar.url)
         await ctx.send(embed=embed)
 
         try:
-            await member.send(f"você foi avisado em {ctx.guild.name}. Motivo: {reason}")
+            await member.send(
+                f"Você recebeu uma advertência em {ctx.guild.name}. "
+                f"Motivo: {reason} "
+                + (
+                    punishment_message
+                    if applied
+                    else f"A punição adicional não foi aplicada: {punishment_message}"
+                    if punishment_message
+                    else ""
+                )
+            )
         except discord.Forbidden:
             pass
 
     @app_commands.command(name="warn", description="Avisa um membro")
+    @app_commands.guild_only()
     @app_commands.checks.has_permissions(manage_roles=True)
     async def warn_slash(self, interaction: discord.Interaction, member: discord.Member, reason: str = "Sem motivo informado"):
         """Avisa um membro (slash)"""
+        if interaction.guild is None or not isinstance(
+            interaction.user, discord.Member
+        ):
+            return await interaction.response.send_message(
+                "Este comando só pode ser usado em um servidor.", ephemeral=True
+            )
         allowed, message = self._can_act(interaction.user, member, interaction.guild)
         if not allowed:
             return await interaction.response.send_message(message, ephemeral=True)
 
+        applied, punishment_message = await self._apply_warning_punishment(
+            interaction.user, member, interaction.guild, reason
+        )
         embed = discord.Embed(
             title="⚠️ Aviso",
-            description=f"{member.mention} foi avisado",
+            description=f"{member.mention} recebeu uma advertência.",
             color=discord.Color.gold()
         )
         embed.add_field(name="Motivo", value=reason, inline=False)
+        if punishment_message:
+            embed.add_field(
+                name=(
+                    "Punição adicional"
+                    if applied
+                    else "Punição adicional não aplicada"
+                ),
+                value=punishment_message,
+                inline=False,
+            )
         embed.set_footer(text=f"Aviso por {interaction.user}", icon_url=interaction.user.display_avatar.url)
         await interaction.response.send_message(embed=embed)
 
         try:
-            await member.send(f"Você foi avisado em {interaction.guild.name}. Motivo: {reason}")
+            await member.send(
+                f"Você recebeu uma advertência em {interaction.guild.name}. "
+                f"Motivo: {reason} "
+                + (
+                    punishment_message
+                    if applied
+                    else f"A punição adicional não foi aplicada: {punishment_message}"
+                    if punishment_message
+                    else ""
+                )
+            )
         except discord.Forbidden:
             pass
 

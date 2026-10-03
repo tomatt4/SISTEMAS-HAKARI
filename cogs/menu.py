@@ -27,6 +27,20 @@ MODULES = {
 }
 
 SETTINGS = {
+    "admin": {
+        "label": "Moderação",
+        "description": "Configure o que acontece além da advertência.",
+        "items": {
+            "warn_additional_punishment": (
+                "Punição adicional da advertência",
+                "choice",
+            ),
+            "warn_timeout_minutes": (
+                "Duração do silenciamento (minutos)",
+                "number",
+            ),
+        },
+    },
     "boost": {
         "label": "Sistema de Boost",
         "description": (
@@ -137,6 +151,13 @@ BOOST_SETTING_OPTION_DESCRIPTIONS = {
     "family_member_limit": "Máximo de pessoas na família, incluindo você.",
 }
 
+WARN_PUNISHMENT_CHOICES = {
+    "none": "Somente advertência",
+    "timeout": "Advertência + silenciamento",
+    "kick": "Advertência + expulsão",
+    "ban": "Advertência + banimento",
+}
+
 
 class NumberSettingModal(discord.ui.Modal):
     def __init__(self, menu: "Menu", guild_id: int, key: str, label: str):
@@ -144,19 +165,25 @@ class NumberSettingModal(discord.ui.Modal):
         self.menu = menu
         self.guild_id = guild_id
         self.key = key
-        max_value = 25 if key == "family_member_limit" else 9999
+        max_value = {
+            "family_member_limit": 25,
+            "warn_timeout_minutes": 40320,
+        }.get(key, 9999)
         self.value_input = discord.ui.TextInput(
             label=label,
             placeholder=f"Digite um número entre 1 e {max_value}",
             min_length=1,
-            max_length=4,
+            max_length=len(str(max_value)),
         )
         self.add_item(self.value_input)
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         try:
             value = int(self.value_input.value)
-            max_value = 25 if self.key == "family_member_limit" else 9999
+            max_value = {
+                "family_member_limit": 25,
+                "warn_timeout_minutes": 40320,
+            }.get(self.key, 9999)
             if value < 1 or value > max_value:
                 raise ValueError
         except ValueError:
@@ -492,6 +519,8 @@ class SettingSelect(discord.ui.Select):
                 description=(
                     BOOST_SETTING_OPTION_DESCRIPTIONS[key]
                     if view.category == "boost"
+                    else "Escolha a ação aplicada junto com a advertência."
+                    if kind == "choice"
                     else f"Tipo: {kind}"
                 ),
             )
@@ -534,6 +563,37 @@ class RoleSettingSelect(discord.ui.RoleSelect):
         else:
             value = self.values[0].id if self.values else None
         await view.menu.set_value(interaction.guild_id, view.setting, value)
+        view.rebuild()
+        await interaction.response.edit_message(
+            embed=view.embed(interaction.guild), view=view
+        )
+
+
+class ChoiceSettingSelect(discord.ui.Select):
+    def __init__(self, view: "MenuView"):
+        current_value = view.menu.get_value(
+            view.guild_id, view.setting, "none"
+        )
+        options = [
+            discord.SelectOption(
+                label=label,
+                value=value,
+                default=value == current_value,
+            )
+            for value, label in WARN_PUNISHMENT_CHOICES.items()
+        ]
+        super().__init__(
+            placeholder="Escolha a punição adicional",
+            min_values=1,
+            max_values=1,
+            options=options,
+        )
+
+    async def callback(self, interaction: discord.Interaction) -> None:
+        view: MenuView = self.view
+        await view.menu.set_value(
+            interaction.guild_id, view.setting, self.values[0]
+        )
         view.rebuild()
         await interaction.response.edit_message(
             embed=view.embed(interaction.guild), view=view
@@ -908,7 +968,17 @@ class MenuView(discord.ui.View):
         if not self.setting:
             return embed
         label, kind = SETTINGS[self.category]["items"][self.setting]
-        value = self.menu.get_value(guild.id, self.setting)
+        value = self.menu.get_value(
+            guild.id,
+            self.setting,
+            (
+                "none"
+                if self.setting == "warn_additional_punishment"
+                else 10
+                if self.setting == "warn_timeout_minutes"
+                else None
+            ),
+        )
         if kind == "rank_intro":
             prefix = self.setting
             configured = any(
@@ -962,6 +1032,8 @@ class MenuView(discord.ui.View):
             display = channel.mention if channel else "Canal não configurado"
         elif kind == "toggle":
             display = "Ativado" if value else "Desativado"
+        elif kind == "choice":
+            display = WARN_PUNISHMENT_CHOICES.get(str(value), "Somente advertência")
         else:
             display = str(value)
         embed.add_field(name=label, value=display, inline=False)
@@ -978,6 +1050,8 @@ class MenuView(discord.ui.View):
                 self.add_item(RoleSettingSelect(self, multiple=False))
             elif kind == "roles":
                 self.add_item(RoleSettingSelect(self, multiple=True))
+            elif kind == "choice":
+                self.add_item(ChoiceSettingSelect(self))
             elif kind == "channel":
                 self.add_item(ChannelSettingSelect(self))
             elif kind == "number":
