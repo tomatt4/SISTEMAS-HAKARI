@@ -34,6 +34,11 @@ class RoleEditModal(discord.ui.Modal):
         current_color = (
             f"#{current_role.color.value:06X}" if current_role else "#000000"
         )
+        current_secondary_color = (
+            f"#{current_role.secondary_color.value:06X}"
+            if current_role and current_role.secondary_color
+            else current_color
+        )
 
         self.name_input = discord.ui.TextInput(
             label="Nome do cargo",
@@ -42,16 +47,25 @@ class RoleEditModal(discord.ui.Modal):
             max_length=100,
             required=True,
         )
-        self.color_input = discord.ui.TextInput(
-            label="Cor hexadecimal",
+        self.primary_color_input = discord.ui.TextInput(
+            label="Primeira cor do gradiente",
             placeholder="#000000 ou 000000",
             default=current_color,
             min_length=6,
             max_length=7,
             required=True,
         )
+        self.secondary_color_input = discord.ui.TextInput(
+            label="Segunda cor do gradiente",
+            placeholder="#FFFFFF ou FFFFFF",
+            default=current_secondary_color,
+            min_length=6,
+            max_length=7,
+            required=True,
+        )
         self.add_item(self.name_input)
-        self.add_item(self.color_input)
+        self.add_item(self.primary_color_input)
+        self.add_item(self.secondary_color_input)
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         if interaction.user.id != self.owner_id:
@@ -68,10 +82,16 @@ class RoleEditModal(discord.ui.Modal):
                 "<:wrong:1554659471223947324> Você não tem mais permissão para editar este cargo.", ephemeral=True
             )
 
-        color_text = self.color_input.value.strip()
-        if not re.fullmatch(r"#?[0-9a-fA-F]{6}", color_text):
+        color_texts = (
+            self.primary_color_input.value.strip(),
+            self.secondary_color_input.value.strip(),
+        )
+        if any(
+            not re.fullmatch(r"#?[0-9a-fA-F]{6}", color_text)
+            for color_text in color_texts
+        ):
             return await interaction.response.send_message(
-                "<:wrong:1554659471223947324> Informe uma cor hexadecimal válida, como `000000` ou `#000000`.",
+                "<:wrong:1554659471223947324> Informe duas cores hexadecimais válidas, como `000000` e `#FFFFFF`.",
                 ephemeral=True,
             )
         role_name = self.name_input.value.strip()
@@ -89,7 +109,13 @@ class RoleEditModal(discord.ui.Modal):
         try:
             role = await role.edit(
                 name=role_name,
-                color=discord.Color(int(color_text.removeprefix("#"), 16)),
+                color=discord.Color(
+                    int(color_texts[0].removeprefix("#"), 16)
+                ),
+                secondary_color=discord.Color(
+                    int(color_texts[1].removeprefix("#"), 16)
+                ),
+                tertiary_color=None,
                 reason=f"Personalização solicitada por {interaction.user}",
             )
         except discord.Forbidden:
