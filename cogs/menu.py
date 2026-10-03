@@ -30,10 +30,8 @@ SETTINGS = {
     "boost": {
         "label": "Sistema de Boost",
         "description": (
-            "Configure quem pode usar os benefícios e onde os cargos criados "
-            "ficam na hierarquia. Para o ajuste automático funcionar, os cargos "
-            "de referência inferiores devem ficar abaixo do limite superior, "
-            "e o cargo do bot deve ficar acima dele."
+            "Configure acessos e posições dos cargos. O cargo do bot deve ficar "
+            "acima do limite superior."
         ),
         "items": {
             "booster_role": ("Cargo que dá acesso de booster", "role"),
